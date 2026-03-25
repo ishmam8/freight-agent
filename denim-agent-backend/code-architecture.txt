@@ -1,0 +1,40 @@
+denim-agent-backend/
+├── .env                        # Your environment variables (API keys, DB URLs)
+├── requirements.txt            # Python dependencies
+├── docker-compose.yml          # Spins up Redis and PostgreSQL locally
+├── run.sh                      # Helper script to boot FastAPI and Celery together
+│
+└── app/                        # The core application folder
+    ├── __init__.py
+    ├── main.py                 # The FastAPI application instance & global middleware
+    │
+    ├── core/                   # Configuration and Infrastructure
+    │   ├── __init__.py
+    │   ├── config.py           # Loads .env variables into a Pydantic Settings class
+    │   ├── database.py         # PostgreSQL connection pooling and session management
+    │   └── celery_app.py       # Initializes the Celery instance connecting to Redis
+    │
+    ├── models/                 # Data Blueprints (Pydantic & SQLModel)
+    │   ├── __init__.py
+    │   ├── schemas.py          # Pydantic models for API requests/responses (Phase 1 stuff)
+    │   └── domain.py           # SQLModel classes (Tables: Run, Lead, Draft)
+    │
+    ├── api/                    # The API Endpoints (The "Controllers")
+    │   ├── __init__.py
+    │   ├── dependencies.py     # Reusable logic (e.g., get_db_session)
+    │   └── routes/
+    │       ├── __init__.py
+    │       ├── research.py     # POST /api/research/start (Triggers Phase 1)
+    │       └── leads.py        # GET /api/leads (For your Next.js dashboard)
+    │
+    ├── agent/                  # The AI & Extraction Logic (The "Brain")
+    │   ├── __init__.py
+    │   ├── researcher.py       # Phase 1: Exa.ai horizontal search
+    │   ├── investigator.py     # Phase 2: Firecrawl scraping & Apollo.io enrichment
+    │   ├── copywriter.py       # Phase 3: OpenAI prompt engineering & drafting
+    │   ├── vertical_scraper.py # The in-house Playwright scraper for Expos
+    │   └── workflow.py         # The LangGraph setup that links Phases 1, 2, and 3
+    │
+    └── worker/                 # The Background Task Queue
+        ├── __init__.py
+        └── tasks.py            # Celery tasks that actually call your `agent/` functions
