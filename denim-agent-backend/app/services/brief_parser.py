@@ -10,6 +10,8 @@ class CampaignBriefSchema(BaseModel):
     buyer_titles: List[str] = Field(description="Titles of the ideal contacts to reach out to (e.g., 'Founder', 'VP of Sales', 'Director').")
     value_proposition: str = Field(description="The core value proposition or offering of the campaign.")
     exa_search_queries: List[str] = Field(description="Generate 3 to 5 optimized search queries for Exa.ai to find companies matching the target audience. Do not include search operators.")
+    sender_name: str = Field(default="Team", description="The name of the person sending the email.")
+    sender_company: str = Field(default="Our Company", description="The company name of the sender.")
 
 async def parse_campaign_brief(prompt: str) -> CampaignBriefSchema:
     # --- MOCK MODE INTERCEPT ---
@@ -27,7 +29,9 @@ async def parse_campaign_brief(prompt: str) -> CampaignBriefSchema:
             "exa_search_queries": [
                 "B2B logistics company UK", 
                 "freight forwarding operations UK"
-            ]
+            ],
+            "sender_name": "Team",
+            "sender_company": "Our Company"
         }
         return CampaignBriefSchema(**mock_data)
     # --- END MOCK MODE ---
@@ -44,13 +48,16 @@ async def parse_campaign_brief(prompt: str) -> CampaignBriefSchema:
     
     system_instruction = """
     You are a B2B campaign analysis AI. Extract key target audience and value proposition parameters from the user's prompt to generate a structured campaign brief.
+    Make sure to identify who the user is (sender_name) and what their company is (sender_company) from the prompt.
     Return ONLY valid JSON matching this exact schema, without markdown formatting:
     {
       "target_audience": "string",
       "banned_terms": ["string"],
       "buyer_titles": ["string"],
       "value_proposition": "string",
-      "exa_search_queries": ["string"]
+      "exa_search_queries": ["string"],
+      "sender_name": "string",
+      "sender_company": "string"
     }
     """
     

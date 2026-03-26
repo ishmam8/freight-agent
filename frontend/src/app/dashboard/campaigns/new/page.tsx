@@ -39,6 +39,10 @@ interface LeadResult {
   contact_email: string | null;
   subject: string | null;
   body: string | null;
+  draft_notes: string | null;
+  hook_type?: string | null;
+  word_count?: number | null;
+  rejection_reason?: string | null;
 }
 
 interface Conversation {
@@ -57,14 +61,19 @@ export default function NewCampaignPage() {
   ]);
   const [input, setInput] = useState("");
   const [brief, setBrief] = useState<CampaignBrief | null>(null);
-  
+
   const [isDrafting, setIsDrafting] = useState(false);
   const [isLaunching, setIsLaunching] = useState(false);
   const [launchSuccess, setLaunchSuccess] = useState(false);
   const [activeBriefId, setActiveBriefId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-
   const [results, setResults] = useState<LeadResult[]>([]);
+
+  // Editing Draft States
+  const [editingDraftId, setEditingDraftId] = useState<number | null>(null);
+  const [editSubject, setEditSubject] = useState("");
+  const [editBody, setEditBody] = useState("");
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -84,10 +93,10 @@ export default function NewCampaignPage() {
       const fetchResults = async () => {
         try {
           const token = localStorage.getItem("token");
-          const url = activeBriefId 
-            ? `/api/campaigns/results?brief_id=${activeBriefId}` 
+          const url = activeBriefId
+            ? `/api/campaigns/results?brief_id=${activeBriefId}`
             : `/api/campaigns/results`;
-            
+
           const res = await fetch(url, {
             headers: { ...(token ? { "Authorization": `Bearer ${token}` } : {}) }
           });
@@ -137,7 +146,7 @@ export default function NewCampaignPage() {
         if (data.status === "success") {
           setActiveConversationId(id);
           setMessages(data.messages || []);
-          
+
           if (data.brief) {
             setBrief(data.brief);
             setActiveBriefId(data.brief.id);
@@ -166,7 +175,7 @@ export default function NewCampaignPage() {
 
   const handleSendMessage = async () => {
     if (!input.trim()) return;
-    
+
     const userPrompt = input.trim();
     setMessages(prev => [...prev, { role: "user", content: userPrompt }]);
     setInput("");
@@ -175,7 +184,7 @@ export default function NewCampaignPage() {
 
     try {
       const token = localStorage.getItem("token");
-      
+
       const payload: { prompt: string; conversation_id?: number } = { prompt: userPrompt };
       if (activeConversationId) {
         payload.conversation_id = activeConversationId;
@@ -195,7 +204,7 @@ export default function NewCampaignPage() {
       const data = await res.json();
       if (data.status === "success" && data.draft_brief) {
         setBrief({ ...data.draft_brief, original_prompt: userPrompt });
-        
+
         if (data.conversation_id && !activeConversationId) {
           setActiveConversationId(data.conversation_id);
           fetchConversations();
@@ -241,12 +250,45 @@ export default function NewCampaignPage() {
           setActiveBriefId(data.brief_id);
         }
       } else {
-         throw new Error("Failed to launch campaign.");
+        throw new Error("Failed to launch campaign.");
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to launch campaign.");
     } finally {
       setIsLaunching(false);
+    }
+  };
+
+  const saveDraftEdits = async (leadId: number) => {
+    setIsSavingDraft(true);
+    setError(null);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`/api/campaigns/${leadId}/draft`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ subject: editSubject, body: editBody })
+      });
+
+      if (res.ok) {
+        setResults(prev => prev.map(lead =>
+          lead.id === leadId
+            ? { ...lead, subject: editSubject, body: editBody }
+            : lead
+        ));
+        setEditingDraftId(null);
+      } else {
+        const data = await res.json();
+        setError(data.message || "Failed to save draft.");
+      }
+    } catch (err) {
+      console.error("Failed to save draft", err);
+      setError("Failed to save draft.");
+    } finally {
+      setIsSavingDraft(false);
     }
   };
 
@@ -268,22 +310,28 @@ export default function NewCampaignPage() {
   };
 
   const activeLeads = results.filter(lead => lead.status.toLowerCase() !== 'completed' && lead.status.toLowerCase() !== 'fetch_failed' && lead.status.toLowerCase() !== 'rejected');
-  const completedLeads = results.filter(lead => lead.status.toLowerCase() === 'completed' || lead.status.toLowerCase() === 'rejected');
+  const completedLeads = results
+    .filter(lead => lead.status.toLowerCase() === 'completed' || lead.status.toLowerCase() === 'rejected')
+    .sort((a, b) => {
+      if (a.status.toLowerCase() === 'completed' && b.status.toLowerCase() !== 'completed') return -1;
+      if (a.status.toLowerCase() !== 'completed' && b.status.toLowerCase() === 'completed') return 1;
+      return 0;
+    });
 
   return (
     <div className="flex h-screen w-full bg-black text-[#E7E9EA] overflow-hidden text-sm font-sans selection:bg-[#333] selection:text-white">
-      
+
       {/* 1. LEFT SIDEBAR (The Persistent Nav) */}
       <div className="w-64 flex flex-col border-r border-[#2F3336] bg-black flex-shrink-0">
-        
+
         {/* Branding & New Chat */}
         <div className="p-4 space-y-4">
           <div className="flex items-center gap-2 px-2 py-1">
             <Sparkles className="w-5 h-5 text-white" />
             <span className="font-bold text-base tracking-wide text-white">CargoIT</span>
           </div>
-          
-          <Button 
+
+          <Button
             onClick={startNewChat}
             className="w-full bg-white hover:bg-[#E7E9EA] text-black font-semibold flex justify-center gap-2 rounded-full h-11"
           >
@@ -301,11 +349,10 @@ export default function NewCampaignPage() {
             <button
               key={conv.id}
               onClick={() => loadConversation(conv.id)}
-              className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-colors ${
-                activeConversationId === conv.id 
-                  ? "bg-[#16181C] text-white" 
-                  : "text-[#71767B] hover:bg-[#16181C] hover:text-[#E7E9EA]"
-              }`}
+              className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-colors ${activeConversationId === conv.id
+                ? "bg-[#16181C] text-white"
+                : "text-[#71767B] hover:bg-[#16181C] hover:text-[#E7E9EA]"
+                }`}
             >
               <MessageSquare className={`w-4 h-4 shrink-0 ${activeConversationId === conv.id ? 'text-white' : 'text-[#71767B]'}`} />
               <span className="truncate text-sm font-medium">{conv.title}</span>
@@ -322,8 +369,8 @@ export default function NewCampaignPage() {
             <Settings className="w-4 h-4 shrink-0" />
             <span className="truncate text-sm font-medium">Settings</span>
           </button>
-          <button 
-            onClick={() => { localStorage.removeItem("token"); window.location.href="/login"; }}
+          <button
+            onClick={() => { localStorage.removeItem("token"); window.location.href = "/login"; }}
             className="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 text-[#71767B] hover:bg-[#16181C] hover:text-[#E7E9EA] transition-colors"
           >
             <LogOut className="w-4 h-4 shrink-0" />
@@ -337,15 +384,14 @@ export default function NewCampaignPage() {
         <div className="p-4 border-b border-[#2F3336] bg-black/95 backdrop-blur z-10">
           <h2 className="font-semibold text-white">Freight Agent</h2>
         </div>
-        
+
         <div className="flex-1 overflow-y-auto p-4 space-y-6">
           {messages.map((msg, i) => (
             <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[85%] p-3.5 leading-relaxed ${
-                msg.role === "user" 
-                  ? "bg-[#202327] text-[#E7E9EA] rounded-2xl rounded-br-sm" 
-                  : "bg-transparent text-[#E7E9EA] border border-[#2F3336] rounded-2xl rounded-bl-sm"
-              }`}>
+              <div className={`max-w-[85%] p-3.5 leading-relaxed ${msg.role === "user"
+                ? "bg-[#202327] text-[#E7E9EA] rounded-2xl rounded-br-sm"
+                : "bg-transparent text-[#E7E9EA] border border-[#2F3336] rounded-2xl rounded-bl-sm"
+                }`}>
                 {msg.content}
               </div>
             </div>
@@ -374,7 +420,7 @@ export default function NewCampaignPage() {
               placeholder="Ask anything..."
               className="resize-none min-h-[60px] max-h-[120px] bg-[#202327] border-transparent text-[#E7E9EA] pr-12 focus-visible:ring-1 focus-visible:ring-[#71767B] rounded-2xl placeholder:text-[#71767B]"
             />
-            <Button 
+            <Button
               size="icon"
               className="absolute right-2 bottom-2 h-9 w-9 bg-white hover:bg-[#E7E9EA] text-black rounded-xl transition-colors disabled:opacity-50"
               onClick={handleSendMessage}
@@ -397,8 +443,8 @@ export default function NewCampaignPage() {
                   <Rocket className="w-5 h-5 text-white" />
                   Mission Control
                 </h2>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   className="bg-transparent border-[#2F3336] text-[#E7E9EA] hover:bg-[#16181C] rounded-full px-4"
                   onClick={() => { setLaunchSuccess(false); }}
@@ -467,7 +513,7 @@ export default function NewCampaignPage() {
                           </div>
                         </TableCell>
                         <TableCell className="align-top py-4">
-                          <span className="inline-flex items-center rounded-full bg-white px-2.5 py-1 text-xs font-bold text-black uppercase">
+                          <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold uppercase ${lead.status.toLowerCase() === 'rejected' ? 'bg-red-950/30 text-red-500 border border-red-900/50' : 'bg-white text-black'}`}>
                             {lead.status}
                           </span>
                         </TableCell>
@@ -482,37 +528,125 @@ export default function NewCampaignPage() {
                           )}
                         </TableCell>
                         <TableCell className="text-right align-top py-4">
-                          {lead.body && lead.contact_email ? (
+                          {lead.status.toLowerCase() === 'rejected' ? (
+                            <Dialog>
+                              <DialogTrigger>
+                                <div className="inline-flex h-9 items-center justify-center rounded-full border border-red-900/50 bg-red-950/30 px-4 text-sm font-medium text-red-500 shadow-sm hover:bg-red-900/50 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500 disabled:pointer-events-none disabled:opacity-50">
+                                  Reason
+                                </div>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-md bg-[#16181C] border-[#2F3336] text-[#E7E9EA] rounded-3xl p-6">
+                                <DialogHeader>
+                                  <DialogTitle className="text-xl font-bold text-red-500 mb-2">Rejection Reason</DialogTitle>
+                                </DialogHeader>
+                                <div className="text-sm font-mono text-red-400/80 bg-[#202327] border border-[#2F3336] px-4 py-3 rounded-xl">
+                                  {lead.rejection_reason || "Validation Failed"}
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+                          ) : lead.body && lead.contact_email ? (
                             <Dialog>
                               <DialogTrigger>
                                 <div className="inline-flex h-9 items-center justify-center rounded-full border border-[#2F3336] bg-transparent px-4 text-sm font-medium text-white shadow-sm hover:bg-[#2F3336] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50">Read Data</div>
                               </DialogTrigger>
-                              <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-[#16181C] border-[#2F3336] text-[#E7E9EA] rounded-3xl p-8">
+                              <DialogContent className="max-w-5xl sm:max-w-6xl max-h-[80vh] overflow-y-auto bg-[#16181C] border-[#2F3336] text-[#E7E9EA] rounded-3xl p-8">
                                 <DialogHeader>
                                   <DialogTitle className="text-2xl font-bold text-white mb-4">Draft Output</DialogTitle>
                                 </DialogHeader>
                                 <div className="space-y-6 pt-2">
+                                  {lead.draft_notes && (
+                                    <div className="bg-[#202327] border border-[#2F3336] rounded-2xl p-4 mb-2">
+                                      <div className="text-xs font-bold text-[#71767B] uppercase tracking-wider mb-2">Agent Reasoning</div>
+                                      <div className="text-sm leading-relaxed text-[#E7E9EA]">{lead.draft_notes}</div>
+                                      <div className="flex items-center gap-3 mt-3">
+                                        {lead.hook_type && (
+                                          <span className="bg-black border border-[#2F3336] text-indigo-400 text-xs font-bold px-3 py-1.5 rounded-full tracking-wider uppercase flex items-center gap-1.5">
+                                            🎯 Hook: {lead.hook_type}
+                                          </span>
+                                        )}
+                                        {lead.word_count && (
+                                          <span className="bg-black border border-[#2F3336] text-[#71767B] text-xs font-bold px-3 py-1.5 rounded-full tracking-wider uppercase flex items-center gap-1.5">
+                                            📝 Words: {lead.word_count}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+
                                   <div className="grid grid-cols-[80px_1fr] gap-2 items-baseline">
                                     <div className="text-sm font-bold text-[#71767B] uppercase tracking-wider">To</div>
                                     <div className="text-base text-white">{lead.contact_name} &lt;{lead.contact_email}&gt;</div>
                                   </div>
-                                  <div className="grid grid-cols-[80px_1fr] gap-2 items-baseline">
-                                    <div className="text-sm font-bold text-[#71767B] uppercase tracking-wider">Subj</div>
-                                    <div className="text-base text-white">{lead.subject}</div>
-                                  </div>
-                                  <div className="pt-4">
-                                    <div className="whitespace-pre-wrap text-base border border-[#2F3336] p-6 rounded-2xl bg-black font-mono text-[#E7E9EA] leading-relaxed">
-                                      {lead.body}
-                                    </div>
-                                  </div>
-                                  <div className="flex justify-end mt-8">
-                                    <Button 
-                                      className="bg-white hover:bg-[#E7E9EA] text-black font-bold rounded-full px-8 h-12 text-base" 
-                                      onClick={() => { window.location.href = `mailto:${lead.contact_email}?subject=${encodeURIComponent(lead.subject || "")}&body=${encodeURIComponent(lead.body || "")}`; }}
-                                    >
-                                      Execute MailClient
-                                    </Button>
-                                  </div>
+
+                                  {editingDraftId === lead.id ? (
+                                    <>
+                                      <div className="grid grid-cols-[80px_1fr] gap-2 items-center">
+                                        <div className="text-sm font-bold text-[#71767B] uppercase tracking-wider">Subj</div>
+                                        <input
+                                          value={editSubject}
+                                          onChange={(e) => setEditSubject(e.target.value)}
+                                          className="bg-black border border-[#2F3336] rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-1 focus:ring-white w-full transition-all"
+                                          placeholder="Enter subject..."
+                                        />
+                                      </div>
+                                      <div className="pt-2">
+                                        <div className="text-sm font-bold text-[#71767B] uppercase tracking-wider mb-3">Body</div>
+                                        <Textarea
+                                          value={editBody}
+                                          onChange={(e) => setEditBody(e.target.value)}
+                                          className="min-h-[350px] bg-black border border-[#2F3336] rounded-2xl p-6 font-mono text-[#E7E9EA] leading-relaxed focus-visible:ring-1 focus-visible:ring-white transition-all"
+                                        />
+                                      </div>
+                                      <div className="flex justify-end gap-3 mt-8">
+                                        <Button
+                                          variant="outline"
+                                          className="rounded-full border-[#2F3336] text-white hover:bg-[#202327] px-6 h-11"
+                                          onClick={() => setEditingDraftId(null)}
+                                        >
+                                          Cancel
+                                        </Button>
+                                        <Button
+                                          className="bg-white hover:bg-[#E7E9EA] text-black font-bold rounded-full px-8 h-11"
+                                          disabled={isSavingDraft}
+                                          onClick={() => saveDraftEdits(lead.id)}
+                                        >
+                                          {isSavingDraft ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                                          {isSavingDraft ? "Saving..." : "Save Changes"}
+                                        </Button>
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <div className="grid grid-cols-[80px_1fr] gap-2 items-baseline">
+                                        <div className="text-sm font-bold text-[#71767B] uppercase tracking-wider">Subj</div>
+                                        <div className="text-base text-white">{lead.subject}</div>
+                                      </div>
+                                      <div className="pt-4">
+                                        <div className="whitespace-pre-wrap text-base border border-[#2F3336] p-6 rounded-2xl bg-black font-mono text-[#E7E9EA] leading-relaxed">
+                                          {lead.body}
+                                        </div>
+                                      </div>
+                                      <div className="flex justify-end gap-3 mt-8">
+                                        <Button
+                                          variant="outline"
+                                          className="rounded-full border-[#2F3336] text-white hover:bg-[#202327] px-6 h-12 font-bold"
+                                          onClick={() => {
+                                            setEditingDraftId(lead.id);
+                                            setEditSubject(lead.subject || "");
+                                            setEditBody(lead.body || "");
+                                          }}
+                                        >
+                                          Edit Draft
+                                        </Button>
+                                        <Button
+                                          className="bg-white hover:bg-[#E7E9EA] text-black font-bold rounded-full px-8 h-12 text-base"
+                                          onClick={() => { window.location.href = `mailto:${lead.contact_email}?subject=${encodeURIComponent(lead.subject || "")}&body=${encodeURIComponent(lead.body || "")}`; }}
+                                        >
+                                          Execute MailClient
+                                        </Button>
+                                      </div>
+                                    </>
+                                  )}
                                 </div>
                               </DialogContent>
                             </Dialog>
@@ -539,8 +673,8 @@ export default function NewCampaignPage() {
               <h2 className="text-xl font-bold text-white flex items-center gap-3">
                 System Blueprint
               </h2>
-              <Button 
-                onClick={handleLaunch} 
+              <Button
+                onClick={handleLaunch}
                 disabled={isLaunching}
                 className="bg-white hover:bg-[#E7E9EA] text-black font-bold rounded-full px-6 h-10 flex items-center gap-2"
               >
@@ -554,7 +688,7 @@ export default function NewCampaignPage() {
                 )}
               </Button>
             </div>
-            
+
             <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
               {error && (
                 <div className="p-4 bg-transparent border border-red-900 rounded-2xl text-red-500 flex items-start gap-3">
@@ -566,7 +700,7 @@ export default function NewCampaignPage() {
               <div className="space-y-8 max-w-3xl">
                 <div>
                   <label className="block text-sm font-bold text-[#71767B] mb-3 uppercase tracking-widest">Target Vector</label>
-                  <Textarea 
+                  <Textarea
                     value={brief.target_audience}
                     onChange={(e) => setBrief({ ...brief, target_audience: e.target.value })}
                     className="min-h-[80px] bg-[#16181C] border-[#2F3336] text-white rounded-2xl focus-visible:ring-1 focus-visible:ring-[#71767B] text-base p-4"
@@ -575,7 +709,7 @@ export default function NewCampaignPage() {
 
                 <div>
                   <label className="block text-sm font-bold text-[#71767B] mb-3 uppercase tracking-widest">Value Prop</label>
-                  <Textarea 
+                  <Textarea
                     value={brief.value_proposition}
                     onChange={(e) => setBrief({ ...brief, value_proposition: e.target.value })}
                     className="min-h-[120px] bg-[#16181C] border-[#2F3336] text-white rounded-2xl focus-visible:ring-1 focus-visible:ring-[#71767B] text-base p-4 leading-relaxed"
@@ -594,13 +728,13 @@ export default function NewCampaignPage() {
                       <div className="flex flex-wrap gap-3">
                         {items.map((item, idx) => (
                           <div key={idx} className="flex items-center gap-2 bg-[#202327] border border-[#2F3336] rounded-full pl-4 pr-1.5 py-1.5 focus-within:ring-1 focus-within:ring-white transition-all">
-                            <input 
+                            <input
                               value={item}
                               onChange={(e) => handleArrayChange(key as keyof CampaignBrief, idx, e.target.value)}
                               className="bg-transparent border-none text-sm font-medium focus:outline-none text-white w-auto min-w-[60px]"
                               size={Math.max(item.length, 6)}
                             />
-                            <button 
+                            <button
                               onClick={() => handleRemoveArrayItem(key as keyof CampaignBrief, idx)}
                               className="text-[#71767B] hover:text-white p-1.5 rounded-full hover:bg-[#2F3336] transition-colors"
                             >
@@ -608,7 +742,7 @@ export default function NewCampaignPage() {
                             </button>
                           </div>
                         ))}
-                        <button 
+                        <button
                           onClick={() => handleAddArrayItem(key as keyof CampaignBrief)}
                           className="text-sm font-bold text-[#71767B] hover:text-white px-5 py-2 border border-dashed border-[#2F3336] rounded-full hover:bg-[#16181C] transition-colors"
                         >

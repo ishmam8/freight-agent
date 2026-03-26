@@ -2,12 +2,14 @@ from arq import create_pool
 from arq.connections import RedisSettings
 from app.core.config import settings
 from typing import List, Any, Optional
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, BackgroundTasks
 from sqlmodel import Session, select
 
 from app.api.deps import get_current_user, get_db
 from app.models.domain import User, Lead, LeadStatus, OutreachDraft, CampaignBrief, Conversation, ChatMessage
-from app.models.schemas import PromptRequest, LaunchRequest
+from app.models.schemas import PromptRequest, LaunchRequest, DraftUpdateRequest
 from app.services.brief_parser import parse_campaign_brief
 from app.services.orchestrator_graph import build_orchestrator_graph
 
@@ -60,12 +62,11 @@ async def draft_brief(
 @router.post("/launch")
 async def launch_campaign(
     request: LaunchRequest,
-    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> Any:
     """
-    Takes an approved brief, saves it, and orchestrates the search graph in the background.
+    Takes an approved brief, saves it, and orchestrates the search graph via ARQ background worker.
     """
     # 1. Create the Brief
     brief = CampaignBrief(
@@ -76,6 +77,8 @@ async def launch_campaign(
         buyer_titles=request.buyer_titles,
         value_proposition=request.value_proposition,
         exa_search_queries=request.exa_search_queries,
+        sender_name=request.sender_name,
+        sender_company=request.sender_company,
     )
     db.add(brief)
     db.commit()
@@ -91,25 +94,14 @@ async def launch_campaign(
             db.add(conv)
             db.commit()
 
-    # 3. Define the Orchestrator Background Task
-    async def run_brain_in_background():
-        state = {
-            "user_id": current_user.id,
-            "brief_id": brief.id,
-            "brief": request.model_dump() if hasattr(request, "model_dump") else request.dict(),
-            "current_queries": request.exa_search_queries.copy(),
-            "found_leads": [],
-            "target_count": 5,
-            "attempts": 0,
-            "max_attempts": 3
-        }
-        graph = build_orchestrator_graph()
-        await graph.ainvoke(state)
-
-    # 4. Hand off to FastAPI Background Tasks
-    background_tasks.add_task(run_brain_in_background)
+    # 3. Trigger the Orchestrator via ARQ Redis
+    redis_pool = await create_pool(RedisSettings.from_dsn(settings.REDIS_URL))
+    try:
+        await redis_pool.enqueue_job('run_orchestrator_job', current_user.id, brief.id)
+    finally:
+        await redis_pool.close()
     
-    return {"status": "success", "message": "Campaign launched", "brief_id": brief.id}
+    return {"status": "success", "message": "Campaign launched via background worker", "brief_id": brief.id}
 
 
 @router.get("/conversations")
@@ -191,8 +183,13 @@ def get_campaign_results(
             "status": lead.status,
             "contact_name": None,
             "contact_email": None,
+            "rejection_reason": lead.rejection_reason,
             "subject": None,
-            "body": None
+            "body": None,
+            "draft_notes": None,
+            "personalization_json": None,
+            "hook_type": None,
+            "word_count": None
         }
         
         if lead.status in [LeadStatus.DRAFTING, LeadStatus.COMPLETED]:
@@ -212,6 +209,10 @@ def get_campaign_results(
                     item["contact_email"] = draft.contact_email
                     item["subject"] = draft.subject
                     item["body"] = draft.body
+                    item["draft_notes"] = draft.draft_notes
+                    item["personalization_json"] = draft.personalization_json
+                    item["hook_type"] = draft.hook_type
+                    item["word_count"] = draft.word_count
                     
         results.append(item)
         
@@ -270,4 +271,58 @@ def get_campaign_drafts(
         )
     ).all()
     
+    
     return {"status": "success", "drafts": drafts}
+
+
+@router.patch("/{lead_id}/draft")
+def update_lead_draft(
+    lead_id: int,
+    request: DraftUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> Any:
+    """
+    Updates the outreach draft for a specific lead.
+    Verifies ownership and queries down the chain Lead -> EnrichedLead -> SelectedContact -> OutreachDraft.
+    """
+    # 1. Verify Lead belongs to current_user
+    lead = db.exec(
+        select(Lead).where(
+            Lead.id == lead_id,
+            Lead.user_id == current_user.id
+        )
+    ).first()
+    
+    if not lead:
+        return {"status": "error", "message": "Lead not found or unauthorized"}
+    
+    # 2. Query down the chain
+    from app.models.domain import EnrichedLead, SelectedContact
+    
+    enriched = db.exec(select(EnrichedLead).where(EnrichedLead.lead_id == lead.id)).first()
+    if not enriched:
+        return {"status": "error", "message": "Enriched lead not found"}
+        
+    sc = db.exec(select(SelectedContact).where(SelectedContact.enriched_lead_id == enriched.id)).first()
+    if not sc:
+        return {"status": "error", "message": "Selected contact not found"}
+        
+    draft = db.exec(
+        select(OutreachDraft)
+        .where(OutreachDraft.selected_contact_id == sc.id)
+    ).first()
+    
+    if not draft:
+        return {"status": "error", "message": "Draft not found"}
+        
+    # 3. Update the draft
+    draft.subject = request.subject
+    draft.body = request.body
+    draft.updated_at = datetime.utcnow()
+    
+    db.add(draft)
+    db.commit()
+    
+    return {"status": "success", "message": "Draft updated"}
+

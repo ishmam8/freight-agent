@@ -46,3 +46,9 @@ class LaunchRequest(BaseModel):
     buyer_titles: list[str]
     value_proposition: str
     exa_search_queries: list[str]
+    sender_name: str = "Team"
+    sender_company: str = "Our Company"
+
+class DraftUpdateRequest(BaseModel):
+    subject: str
+    body: str

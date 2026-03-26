@@ -34,6 +34,8 @@ class CampaignBrief(SQLModel, table=True):
     buyer_titles: List[str] = Field(default_factory=list, sa_column=Column(JSON))
     value_proposition: str
     exa_search_queries: List[str] = Field(default_factory=list, sa_column=Column(JSON))
+    sender_name: str = Field(default="Team")
+    sender_company: str = Field(default="Our Company")
 
 class Lead(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -51,7 +53,7 @@ class Lead(SQLModel, table=True):
     canonical_domain: Optional[str] = None
     scraped_context: Optional[str] = None
     investigation_notes: Optional[str] = None
-    rejection_reason: Optional[str] = None
+    rejection_reason: Optional[str] = Field(default=None)
     investigation_confidence: Optional[float] = None
 
     employee_count: Optional[int] = None
@@ -139,6 +141,8 @@ class OutreachDraft(SQLModel, table=True):
 
     draft_mode: Optional[str] = None
     personalization_json: Optional[str] = None
+    hook_type: Optional[str] = None
+    word_count: Optional[int] = None
     draft_notes: Optional[str] = None
 
     gmail_draft_id: Optional[str] = Field(default=None, index=True)
