@@ -20,6 +20,8 @@ class LeadStatus(str, Enum):
 
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
+    first_name: Optional[str] = Field(default=None)
+    last_name: Optional[str] = Field(default=None)
     email: str = Field(unique=True, index=True)
     hashed_password: str
     tier: str = Field(default="free")

@@ -38,6 +38,20 @@ class PromptRequest(BaseModel):
     prompt: str
     conversation_id: Optional[int] = None
 
+class UserProfileUpdate(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[str] = None
+    current_password: Optional[str] = None
+    new_password: Optional[str] = None
+
+class UserProfileResponse(BaseModel):
+    id: int
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: str
+    tier: str
+
 class LaunchRequest(BaseModel):
     conversation_id: int
     original_prompt: str

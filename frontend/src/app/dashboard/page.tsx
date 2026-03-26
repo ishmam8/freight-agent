@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useAuth } from "@/lib/useAuth";
 
 // --- Interfaces ---
 interface CampaignBrief {
@@ -52,6 +53,8 @@ interface Conversation {
 }
 
 export default function NewCampaignPage() {
+  const { isAuthenticated } = useAuth();
+  
   // --- State ---
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
@@ -318,8 +321,10 @@ export default function NewCampaignPage() {
       return 0;
     });
 
+  if (!isAuthenticated) return null; // Or a loading spinner
+
   return (
-    <div className="flex h-screen w-full bg-black text-[#E7E9EA] overflow-hidden text-sm font-sans selection:bg-[#333] selection:text-white">
+    <div className="flex h-screen w-full bg-black text-white overflow-hidden text-sm font-sans selection:bg-[#333] selection:text-white">
 
       {/* 1. LEFT SIDEBAR (The Persistent Nav) */}
       <div className="w-64 flex flex-col border-r border-[#2F3336] bg-black flex-shrink-0">
@@ -328,7 +333,7 @@ export default function NewCampaignPage() {
         <div className="p-4 space-y-4">
           <div className="flex items-center gap-2 px-2 py-1">
             <Sparkles className="w-5 h-5 text-white" />
-            <span className="font-bold text-base tracking-wide text-white">CargoIT</span>
+            <span className="font-bold text-base tracking-wide text-white">Cargo.it</span>
           </div>
 
           <Button
@@ -342,7 +347,7 @@ export default function NewCampaignPage() {
 
         {/* Conversation History */}
         <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1 custom-scrollbar">
-          <div className="text-xs font-semibold text-[#71767B] uppercase tracking-wider mb-2 px-2 mt-4">
+          <div className="text-xs font-semibold text-white uppercase tracking-wider mb-2 px-2 mt-4">
             Recent Campaigns
           </div>
           {conversations.map(conv => (
@@ -351,27 +356,30 @@ export default function NewCampaignPage() {
               onClick={() => loadConversation(conv.id)}
               className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-colors ${activeConversationId === conv.id
                 ? "bg-[#16181C] text-white"
-                : "text-[#71767B] hover:bg-[#16181C] hover:text-[#E7E9EA]"
+                : "text-white hover:bg-[#16181C] hover:text-white"
                 }`}
             >
-              <MessageSquare className={`w-4 h-4 shrink-0 ${activeConversationId === conv.id ? 'text-white' : 'text-[#71767B]'}`} />
+              <MessageSquare className={`w-4 h-4 shrink-0 ${activeConversationId === conv.id ? 'text-white' : 'text-white'}`} />
               <span className="truncate text-sm font-medium">{conv.title}</span>
             </button>
           ))}
           {conversations.length === 0 && (
-            <div className="px-3 py-4 text-xs text-[#71767B] text-center">No history yet.</div>
+            <div className="px-3 py-4 text-xs text-white text-center">No history yet.</div>
           )}
         </div>
 
         {/* User Footer */}
         <div className="p-4 border-t border-[#2F3336] space-y-1">
-          <button className="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 text-[#71767B] hover:bg-[#16181C] hover:text-[#E7E9EA] transition-colors">
+          <button 
+            onClick={() => window.location.href = "/dashboard/settings"}
+            className="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 text-white hover:bg-[#16181C] hover:text-white transition-colors"
+          >
             <Settings className="w-4 h-4 shrink-0" />
             <span className="truncate text-sm font-medium">Settings</span>
           </button>
           <button
             onClick={() => { localStorage.removeItem("token"); window.location.href = "/login"; }}
-            className="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 text-[#71767B] hover:bg-[#16181C] hover:text-[#E7E9EA] transition-colors"
+            className="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 text-white hover:bg-[#16181C] hover:text-white transition-colors"
           >
             <LogOut className="w-4 h-4 shrink-0" />
             <span className="truncate text-sm font-medium">Logout</span>
@@ -380,8 +388,8 @@ export default function NewCampaignPage() {
       </div>
 
       {/* 2. MIDDLE PANEL (The Chat Box) */}
-      <div className="flex-1 min-w-[350px] max-w-2xl flex flex-col border-r border-[#2F3336] bg-black">
-        <div className="p-4 border-b border-[#2F3336] bg-black/95 backdrop-blur z-10">
+      <div className="flex-1 min-w-[350px] max-w-2xl flex flex-col border-r border-[#2F3336] bg-[#0E0F11]">
+        <div className="p-4 border-b border-[#2F3336] bg-[#0E0F11]/95 backdrop-blur z-10">
           <h2 className="font-semibold text-white">Freight Agent</h2>
         </div>
 
@@ -389,8 +397,8 @@ export default function NewCampaignPage() {
           {messages.map((msg, i) => (
             <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
               <div className={`max-w-[85%] p-3.5 leading-relaxed ${msg.role === "user"
-                ? "bg-[#202327] text-[#E7E9EA] rounded-2xl rounded-br-sm"
-                : "bg-transparent text-[#E7E9EA] border border-[#2F3336] rounded-2xl rounded-bl-sm"
+                ? "bg-[#202327] text-white rounded-2xl rounded-br-sm"
+                : "bg-transparent text-white border border-[#2F3336] rounded-2xl rounded-bl-sm"
                 }`}>
                 {msg.content}
               </div>
@@ -398,7 +406,7 @@ export default function NewCampaignPage() {
           ))}
           {isDrafting && (
             <div className="flex justify-start">
-              <div className="max-w-[80%] p-3.5 rounded-2xl bg-transparent border border-[#2F3336] text-[#71767B] animate-pulse rounded-bl-sm">
+              <div className="max-w-[80%] p-3.5 rounded-2xl bg-transparent border border-[#2F3336] text-white animate-pulse rounded-bl-sm">
                 Thinking...
               </div>
             </div>
@@ -406,7 +414,7 @@ export default function NewCampaignPage() {
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="p-4 bg-black">
+        <div className="p-4 bg-[#0E0F11]">
           <div className="flex gap-2 relative">
             <Textarea
               value={input}
@@ -418,7 +426,7 @@ export default function NewCampaignPage() {
                 }
               }}
               placeholder="Ask anything..."
-              className="resize-none min-h-[60px] max-h-[120px] bg-[#202327] border-transparent text-[#E7E9EA] pr-12 focus-visible:ring-1 focus-visible:ring-[#71767B] rounded-2xl placeholder:text-[#71767B]"
+              className="resize-none min-h-[60px] max-h-[120px] bg-[#202327] border-transparent text-white pr-12 focus-visible:ring-1 focus-visible:ring-[#71767B] rounded-2xl placeholder:text-white"
             />
             <Button
               size="icon"
@@ -446,7 +454,7 @@ export default function NewCampaignPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="bg-transparent border-[#2F3336] text-[#E7E9EA] hover:bg-[#16181C] rounded-full px-4"
+                  className="bg-transparent border-[#2F3336] text-white hover:bg-[#16181C] rounded-full px-4"
                   onClick={() => { setLaunchSuccess(false); }}
                 >
                   View JSON
@@ -454,7 +462,7 @@ export default function NewCampaignPage() {
               </div>
 
               {activeLeads.length === 0 ? (
-                <div className="text-center py-8 text-[#71767B]">
+                <div className="text-center py-8 text-white">
                   <p>System idle. No active agents.</p>
                 </div>
               ) : (
@@ -463,7 +471,7 @@ export default function NewCampaignPage() {
                     <div key={lead.id} className="bg-[#16181C] border border-[#2F3336] rounded-2xl p-4 flex items-center justify-between">
                       <div>
                         <div className="font-bold text-white mb-1">{lead.company_name}</div>
-                        <a href={lead.website_url.startsWith('http') ? lead.website_url : `https://${lead.website_url}`} target="_blank" rel="noopener noreferrer" className="text-sm text-[#71767B] hover:text-white transition-colors">
+                        <a href={lead.website_url.startsWith('http') ? lead.website_url : `https://${lead.website_url}`} target="_blank" rel="noopener noreferrer" className="text-sm text-white hover:text-white transition-colors">
                           {lead.website_url}
                         </a>
                       </div>
@@ -471,7 +479,7 @@ export default function NewCampaignPage() {
                         <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-[#202327] text-white uppercase tracking-widest border border-[#2F3336]">
                           {lead.status}
                         </span>
-                        <Loader2 className="w-5 h-5 text-[#71767B] animate-spin" />
+                        <Loader2 className="w-5 h-5 text-white animate-spin" />
                       </div>
                     </div>
                   ))}
@@ -490,16 +498,16 @@ export default function NewCampaignPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="border-[#2F3336] hover:bg-transparent">
-                      <TableHead className="text-[#71767B] font-semibold py-4">Target</TableHead>
-                      <TableHead className="text-[#71767B] font-semibold py-4">State</TableHead>
-                      <TableHead className="text-[#71767B] font-semibold py-4">Vector</TableHead>
-                      <TableHead className="text-right text-[#71767B] font-semibold py-4">Payload</TableHead>
+                      <TableHead className="text-white font-semibold py-4">Target</TableHead>
+                      <TableHead className="text-white font-semibold py-4">State</TableHead>
+                      <TableHead className="text-white font-semibold py-4">Vector</TableHead>
+                      <TableHead className="text-right text-white font-semibold py-4">Payload</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {completedLeads.length === 0 && (
                       <TableRow className="border-[#2F3336] hover:bg-transparent">
-                        <TableCell colSpan={4} className="text-center py-12 text-[#71767B]">
+                        <TableCell colSpan={4} className="text-center py-12 text-white">
                           Awaiting output...
                         </TableCell>
                       </TableRow>
@@ -508,7 +516,7 @@ export default function NewCampaignPage() {
                       <TableRow key={lead.id} className="border-[#2F3336] hover:bg-[#202327] transition-colors">
                         <TableCell className="font-medium align-top text-white py-4">
                           {lead.company_name}
-                          <div className="text-xs text-[#71767B] mt-1">
+                          <div className="text-xs text-white mt-1">
                             {lead.website_url}
                           </div>
                         </TableCell>
@@ -517,14 +525,14 @@ export default function NewCampaignPage() {
                             {lead.status}
                           </span>
                         </TableCell>
-                        <TableCell className="align-top text-[#E7E9EA] py-4">
+                        <TableCell className="align-top text-white py-4">
                           {lead.contact_name ? (
                             <>
                               <div className="font-medium">{lead.contact_name}</div>
-                              <div className="text-xs text-[#71767B] mt-1">{lead.contact_email}</div>
+                              <div className="text-xs text-white mt-1">{lead.contact_email}</div>
                             </>
                           ) : (
-                            <span className="text-[#71767B] text-xs italic">Resolving...</span>
+                            <span className="text-white text-xs italic">Resolving...</span>
                           )}
                         </TableCell>
                         <TableCell className="text-right align-top py-4">
@@ -535,7 +543,7 @@ export default function NewCampaignPage() {
                                   Reason
                                 </div>
                               </DialogTrigger>
-                              <DialogContent className="max-w-md bg-[#16181C] border-[#2F3336] text-[#E7E9EA] rounded-3xl p-6">
+                              <DialogContent className="max-w-md bg-[#16181C] border-[#2F3336] text-white rounded-3xl p-6">
                                 <DialogHeader>
                                   <DialogTitle className="text-xl font-bold text-red-500 mb-2">Rejection Reason</DialogTitle>
                                 </DialogHeader>
@@ -549,15 +557,15 @@ export default function NewCampaignPage() {
                               <DialogTrigger>
                                 <div className="inline-flex h-9 items-center justify-center rounded-full border border-[#2F3336] bg-transparent px-4 text-sm font-medium text-white shadow-sm hover:bg-[#2F3336] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50">Read Data</div>
                               </DialogTrigger>
-                              <DialogContent className="max-w-5xl sm:max-w-6xl max-h-[80vh] overflow-y-auto bg-[#16181C] border-[#2F3336] text-[#E7E9EA] rounded-3xl p-8">
+                              <DialogContent className="max-w-5xl sm:max-w-6xl max-h-[80vh] overflow-y-auto bg-[#16181C] border-[#2F3336] text-white rounded-3xl p-8">
                                 <DialogHeader>
                                   <DialogTitle className="text-2xl font-bold text-white mb-4">Draft Output</DialogTitle>
                                 </DialogHeader>
                                 <div className="space-y-6 pt-2">
                                   {lead.draft_notes && (
                                     <div className="bg-[#202327] border border-[#2F3336] rounded-2xl p-4 mb-2">
-                                      <div className="text-xs font-bold text-[#71767B] uppercase tracking-wider mb-2">Agent Reasoning</div>
-                                      <div className="text-sm leading-relaxed text-[#E7E9EA]">{lead.draft_notes}</div>
+                                      <div className="text-xs font-bold text-white uppercase tracking-wider mb-2">Agent Reasoning</div>
+                                      <div className="text-sm leading-relaxed text-white">{lead.draft_notes}</div>
                                       <div className="flex items-center gap-3 mt-3">
                                         {lead.hook_type && (
                                           <span className="bg-black border border-[#2F3336] text-indigo-400 text-xs font-bold px-3 py-1.5 rounded-full tracking-wider uppercase flex items-center gap-1.5">
@@ -565,7 +573,7 @@ export default function NewCampaignPage() {
                                           </span>
                                         )}
                                         {lead.word_count && (
-                                          <span className="bg-black border border-[#2F3336] text-[#71767B] text-xs font-bold px-3 py-1.5 rounded-full tracking-wider uppercase flex items-center gap-1.5">
+                                          <span className="bg-black border border-[#2F3336] text-white text-xs font-bold px-3 py-1.5 rounded-full tracking-wider uppercase flex items-center gap-1.5">
                                             📝 Words: {lead.word_count}
                                           </span>
                                         )}
@@ -574,14 +582,14 @@ export default function NewCampaignPage() {
                                   )}
 
                                   <div className="grid grid-cols-[80px_1fr] gap-2 items-baseline">
-                                    <div className="text-sm font-bold text-[#71767B] uppercase tracking-wider">To</div>
+                                    <div className="text-sm font-bold text-white uppercase tracking-wider">To</div>
                                     <div className="text-base text-white">{lead.contact_name} &lt;{lead.contact_email}&gt;</div>
                                   </div>
 
                                   {editingDraftId === lead.id ? (
                                     <>
                                       <div className="grid grid-cols-[80px_1fr] gap-2 items-center">
-                                        <div className="text-sm font-bold text-[#71767B] uppercase tracking-wider">Subj</div>
+                                        <div className="text-sm font-bold text-white uppercase tracking-wider">Subj</div>
                                         <input
                                           value={editSubject}
                                           onChange={(e) => setEditSubject(e.target.value)}
@@ -590,11 +598,11 @@ export default function NewCampaignPage() {
                                         />
                                       </div>
                                       <div className="pt-2">
-                                        <div className="text-sm font-bold text-[#71767B] uppercase tracking-wider mb-3">Body</div>
+                                        <div className="text-sm font-bold text-white uppercase tracking-wider mb-3">Body</div>
                                         <Textarea
                                           value={editBody}
                                           onChange={(e) => setEditBody(e.target.value)}
-                                          className="min-h-[350px] bg-black border border-[#2F3336] rounded-2xl p-6 font-mono text-[#E7E9EA] leading-relaxed focus-visible:ring-1 focus-visible:ring-white transition-all"
+                                          className="min-h-[350px] bg-black border border-[#2F3336] rounded-2xl p-6 font-mono text-white leading-relaxed focus-visible:ring-1 focus-visible:ring-white transition-all"
                                         />
                                       </div>
                                       <div className="flex justify-end gap-3 mt-8">
@@ -618,11 +626,11 @@ export default function NewCampaignPage() {
                                   ) : (
                                     <>
                                       <div className="grid grid-cols-[80px_1fr] gap-2 items-baseline">
-                                        <div className="text-sm font-bold text-[#71767B] uppercase tracking-wider">Subj</div>
+                                        <div className="text-sm font-bold text-white uppercase tracking-wider">Subj</div>
                                         <div className="text-base text-white">{lead.subject}</div>
                                       </div>
                                       <div className="pt-4">
-                                        <div className="whitespace-pre-wrap text-base border border-[#2F3336] p-6 rounded-2xl bg-black font-mono text-[#E7E9EA] leading-relaxed">
+                                        <div className="whitespace-pre-wrap text-base border border-[#2F3336] p-6 rounded-2xl bg-black font-mono text-white leading-relaxed">
                                           {lead.body}
                                         </div>
                                       </div>
@@ -651,7 +659,7 @@ export default function NewCampaignPage() {
                               </DialogContent>
                             </Dialog>
                           ) : (
-                            <Button variant="ghost" size="sm" disabled className="text-[#71767B]">Standby</Button>
+                            <Button variant="ghost" size="sm" disabled className="text-white">Standby</Button>
                           )}
                         </TableCell>
                       </TableRow>
@@ -662,7 +670,7 @@ export default function NewCampaignPage() {
             </div>
           </div>
         ) : !brief ? (
-          <div className="flex flex-col items-center justify-center flex-1 p-8 text-center text-[#71767B]">
+          <div className="flex flex-col items-center justify-center flex-1 p-8 text-center text-white">
             <Sparkles className="w-16 h-16 mb-6 text-[#2F3336]" />
             <h3 className="text-xl font-bold text-white mb-2">Awaiting Parameters</h3>
             <p className="max-w-md text-base leading-relaxed">Initialize a request in the terminal to generate targeting vectors.</p>
@@ -699,7 +707,7 @@ export default function NewCampaignPage() {
 
               <div className="space-y-8 max-w-3xl">
                 <div>
-                  <label className="block text-sm font-bold text-[#71767B] mb-3 uppercase tracking-widest">Target Vector</label>
+                  <label className="block text-sm font-bold text-white mb-3 uppercase tracking-widest">Target Vector</label>
                   <Textarea
                     value={brief.target_audience}
                     onChange={(e) => setBrief({ ...brief, target_audience: e.target.value })}
@@ -708,7 +716,7 @@ export default function NewCampaignPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-[#71767B] mb-3 uppercase tracking-widest">Value Prop</label>
+                  <label className="block text-sm font-bold text-white mb-3 uppercase tracking-widest">Value Prop</label>
                   <Textarea
                     value={brief.value_proposition}
                     onChange={(e) => setBrief({ ...brief, value_proposition: e.target.value })}
@@ -724,7 +732,7 @@ export default function NewCampaignPage() {
                   const items = (brief[key as keyof CampaignBrief] as string[]) || [];
                   return (
                     <div key={key}>
-                      <label className="block text-sm font-bold text-[#71767B] mb-3 uppercase tracking-widest">{label}</label>
+                      <label className="block text-sm font-bold text-white mb-3 uppercase tracking-widest">{label}</label>
                       <div className="flex flex-wrap gap-3">
                         {items.map((item, idx) => (
                           <div key={idx} className="flex items-center gap-2 bg-[#202327] border border-[#2F3336] rounded-full pl-4 pr-1.5 py-1.5 focus-within:ring-1 focus-within:ring-white transition-all">
@@ -736,7 +744,7 @@ export default function NewCampaignPage() {
                             />
                             <button
                               onClick={() => handleRemoveArrayItem(key as keyof CampaignBrief, idx)}
-                              className="text-[#71767B] hover:text-white p-1.5 rounded-full hover:bg-[#2F3336] transition-colors"
+                              className="text-white hover:text-white p-1.5 rounded-full hover:bg-[#2F3336] transition-colors"
                             >
                               <X className="w-3.5 h-3.5" />
                             </button>
@@ -744,7 +752,7 @@ export default function NewCampaignPage() {
                         ))}
                         <button
                           onClick={() => handleAddArrayItem(key as keyof CampaignBrief)}
-                          className="text-sm font-bold text-[#71767B] hover:text-white px-5 py-2 border border-dashed border-[#2F3336] rounded-full hover:bg-[#16181C] transition-colors"
+                          className="text-sm font-bold text-white hover:text-white px-5 py-2 border border-dashed border-[#2F3336] rounded-full hover:bg-[#16181C] transition-colors"
                         >
                           + Add Param
                         </button>
