@@ -2,9 +2,18 @@ from sqlmodel import create_engine, Session, select
 from app.models.domain import SQLModel, Lead
 from app.models.schemas import LeadCreate
 from datetime import datetime
+import os
 
-sqlite_url = "sqlite:///./denim_leads.db"
-engine = create_engine(sqlite_url, echo=False)
+# Get the Railway URL
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL not found! Postgres is required.")
+
+# Fix: SQLAlchemy requires 'postgresql://', but Railway often provides 'postgres://'
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+engine = create_engine(DATABASE_URL, echo=False)
 
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)

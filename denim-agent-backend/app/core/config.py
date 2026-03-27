@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "cargoitai"
     
     # Optional DB configs, typically picked up from env or defaults
-    DATABASE_URL: Optional[str] = os.getenv("DATABASE_URL", "sqlite:///denim_leads.db")
+    DATABASE_URL: Optional[str] = os.getenv("DATABASE_URL")
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379")
     
     # JWT Configs
