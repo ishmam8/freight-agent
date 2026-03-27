@@ -38,6 +38,28 @@ class PromptRequest(BaseModel):
     prompt: str
     conversation_id: Optional[int] = None
 
+class UserCreate(BaseModel):
+    email: str
+    password: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+
+class UserProfileUpdate(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[str] = None
+    current_password: Optional[str] = None
+    new_password: Optional[str] = None
+
+class UserProfileResponse(BaseModel):
+    id: int
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: str
+    subscription_tier: str
+    credits: int
+    stripe_customer_id: Optional[str] = None
+
 class LaunchRequest(BaseModel):
     conversation_id: int
     original_prompt: str
@@ -46,3 +68,12 @@ class LaunchRequest(BaseModel):
     buyer_titles: list[str]
     value_proposition: str
     exa_search_queries: list[str]
+    sender_name: str = "Team"
+    sender_company: str = "Our Company"
+
+class DraftUpdateRequest(BaseModel):
+    subject: str
+    body: str
+
+class CheckoutRequest(BaseModel):
+    action: str

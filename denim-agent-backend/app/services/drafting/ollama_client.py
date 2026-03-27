@@ -7,8 +7,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:14b-instruct")
+GROQ_BASE_URL = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama3-70b-8192")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 
 def strip_json_fence(text: str) -> str:
@@ -30,45 +31,70 @@ async def generate_draft_with_ollama(brief: Dict[str, Any]) -> Dict[str, Any]:
     # Ensure your tasks.py passes 'scraped_context', 'contact_name', etc., into this brief dictionary!
     
     system_prompt = """
-You are an elite B2B outbound copywriter. Your job is to draft a hyper-personalized, ultra-short cold email.
+You are an elite B2B outbound copywriter specializing in cold emails. Your job is to draft a single, highly personalized cold email that feels genuinely human-written, not AI-generated.
 
-STRICT RULES:
-1. LENGTH: Absolute maximum of 150 words. Shorter is better.
-2. NO PLEASANTRIES: Never say "I hope this finds you well", "How are you", "My name is...", or "I am reaching out because".
-3. THE HOOK: The first sentence MUST reference something specific from the company's website context (e.g., their specific niche, a feature they have, their mission).
-4. THE PIVOT: The second sentence connects their context to our 'value_proposition'.
-5. THE CTA: End with a low-friction, soft call to action (e.g., "Open to seeing how?", "Worth a chat?").
-6. TONE: Casual, direct, peer-to-peer. No corporate jargon. Act like you are writing to a coworker.
+SENDER CONTEXT
+Name: [Sender Name]
+Company: [Sender Company]
+Value Proposition: [Your value proposition]
+ICP: [Your ideal customer profile]
+TONE: CREATIVE
+Lean into wit and specificity. Use unexpected angles, fresh metaphors, and a conversational voice that feels like a clever colleague, not a salesperson. Surprise the reader.
 
-Return valid JSON only in this exact shape:
+STRICT STRUCTURE
+SUBJECT LINE: Under 6 words. Title Case. Intriguing, but not clickbait. Do not use generic openers like "Quick question".
+GREETING: "Hi [Name]," if a name is known. Otherwise, use "Hi [Company] Team,".
+HOOK (1-2 sentences): A creative, specific observation tied to something real about their business—such as their product positioning, a recent move, their stated mission, or a genuinely interesting detail from their website. Make them feel seen. Never fabricate specifics; use a placeholder like [observation from their site] if context is missing.
+PIVOT (2-3 sentences): Bridge from their world to why you are reaching out. Explain why this is relevant right now. Connect their specific situation to the problem you solve.
+VALUE BEAT (1-2 sentences): Land the outcome. What changes for them? Be specific and concrete, not vague.
+CTA: Ask a single, open question. Keep it to one sentence. Low friction, zero pressure.
+SIGN-OFF:
+Best,
+[Sender Name]
+[Sender Company]
+HARD RULES
+Total length: 100 to 150 words (body only, excluding the subject line and sign-off).
+BANNED phrases: "I hope this finds you well", "I am reaching out to introduce", "touching base", "synergy", "leverage", "game-changer", "revolutionize", "I wanted to", "just following up".
+No bullet points in the email body.
+No self-congratulatory language about your company.
+Limit yourself to one core idea per sentence.
+OUTPUT FORMAT
+Return valid JSON only. Do not use markdown formatting or code blocks.
+
 {
-  "subject": "string (Under 5 words, entirely lowercase, no punctuation)",
-  "body": "string (The email body, using \n\n for paragraph breaks)",
-  "draft_mode": "string (e.g., 'aggressive', 'soft', 'value-led')",
-  "personalization_points": ["string (What specific thing did you reference in the hook?)"],
-  "notes": "string (Why did you choose this angle?)"
+"subject": "string (under 6 words, Title Case)",
+"body": "string (complete email body using \n\n between paragraphs)",
+"draft_mode": "creative",
+"personalization_points": [
+"string (what specific thing did the hook reference?)"
+],
+"hook_type": "string (describe the hook strategy used, e.g., 'mission tension', 'product gap', 'industry insight', 'milestone moment')",
+"word_count": number,
+"notes": "string (briefly explain your creative angle and why the hook lands)"
 }
 """.strip()
 
     payload = {
-        "model": OLLAMA_MODEL,
+        "model": GROQ_MODEL,
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": json.dumps(brief, ensure_ascii=False, indent=2)},
         ],
-        "stream": False,
-        "format": "json",
-        "options": {
-            "temperature": 0.4 # Keep this low for strict formatting, but high enough for creative hooks
-        },
+        "temperature": 0.4,
+        "response_format": {"type": "json_object"}
     }
 
-    async with httpx.AsyncClient(timeout=120.0) as client:
-        response = await client.post(f"{OLLAMA_BASE_URL}/api/chat", json=payload)
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    async with httpx.AsyncClient(timeout=300.0) as client:
+        response = await client.post(f"{GROQ_BASE_URL}/chat/completions", json=payload, headers=headers)
         response.raise_for_status()
         data = response.json()
 
-    content = data.get("message", {}).get("content", "")
+    content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
     clean = strip_json_fence(content)
     parsed = json.loads(clean)
 
@@ -77,5 +103,7 @@ Return valid JSON only in this exact shape:
         "body": parsed.get("body", "").strip(),
         "draft_mode": parsed.get("draft_mode", "").strip(),
         "personalization_points": parsed.get("personalization_points", []),
+        "hook_type": parsed.get("hook_type", "").strip(),
+        "word_count": parsed.get("word_count", 0),
         "notes": parsed.get("notes", "").strip(),
     }

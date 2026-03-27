@@ -15,8 +15,8 @@ from app.services.drafting.draft_brief import build_outreach_brief
 from app.services.drafting.ollama_client import generate_draft_with_ollama
 from app.services.drafting.gmail_draft_graph import create_gmail_draft
 
-DATABASE_URL = "sqlite:///denim_leads.db"
-engine = create_engine(DATABASE_URL, echo=False)
+from app.core.config import settings
+engine = create_engine(settings.DATABASE_URL, echo=False)
 
 
 class DraftState(TypedDict, total=False):
@@ -182,6 +182,8 @@ def save_outreach_draft_node(state: DraftState) -> DraftState:
                 draft.get("personalization_points", []),
                 ensure_ascii=False,
             ),
+            "hook_type": draft.get("hook_type"),
+            "word_count": draft.get("word_count"),
             "draft_notes": draft.get("notes"),
             "draft_status": "generated",
         }
@@ -195,6 +197,8 @@ def save_outreach_draft_node(state: DraftState) -> DraftState:
             existing.body = payload["body"]
             existing.draft_mode = payload["draft_mode"]
             existing.personalization_json = payload["personalization_json"]
+            existing.hook_type = payload["hook_type"]
+            existing.word_count = payload["word_count"]
             existing.draft_notes = payload["draft_notes"]
 
             if not existing.gmail_draft_id:

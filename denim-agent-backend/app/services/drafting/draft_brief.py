@@ -56,6 +56,8 @@ def build_outreach_brief(
             "value_proposition": value_proposition,
             "cta": cta,
             "tone": "casual, peer-to-peer, ultra-short",
+            "sender_name": campaign_brief_dict.get("sender_name", "Team"),
+            "sender_company": campaign_brief_dict.get("sender_company", "Our Company"),
         },
         "draft_mode": draft_mode,
         "rules": {

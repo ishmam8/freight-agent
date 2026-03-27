@@ -9,6 +9,8 @@ from app.services.enricher import enrich_one_lead
 from app.services.selector import build_candidates, pick_best_candidate, upsert_selected_contact
 from app.services.drafting.drafter_graph import build_drafter_graph
 from app.services.research.researcher import run_prompt_research
+from app.services.orchestrator_graph import build_orchestrator_graph
+from app.services.billing import decrement_user_credits
 
 from urllib.parse import urlparse
 
@@ -23,7 +25,7 @@ async def run_campaign_from_prompt(ctx, prompt: str, user_id: int, brief_id: int
     print(f"Running campaign for prompt: {prompt}")
     redis_pool = ctx.get("redis")
     
-    desired_count = 5
+    desired_count = 100
     successful_leads = []
     exclude_domains = []
     
@@ -96,6 +98,31 @@ async def run_campaign_from_prompt(ctx, prompt: str, user_id: int, brief_id: int
             except Exception as e:
                 session.rollback()
                 print(f"Failed to insert alive lead {lead_create.website_url}: {e}")
+
+async def run_orchestrator_job(ctx, user_id: int, brief_id: int):
+    print(f"[Worker] Waking up orchestrator for brief {brief_id}")
+    with Session(engine) as session:
+        brief = session.get(CampaignBrief, brief_id)
+        if not brief:
+            print(f"[Worker] Brief {brief_id} not found.")
+            return
+            
+        brief_dict = brief.model_dump() if hasattr(brief, "model_dump") else brief.dict()
+        current_queries = brief_dict.get("exa_search_queries", [])
+        
+    state = {
+        "user_id": user_id,
+        "brief_id": brief_id,
+        "brief": brief_dict,
+        "current_queries": current_queries.copy() if current_queries else [],
+        "found_leads": [],
+        "target_count": 100,
+        "attempts": 0,
+        "max_attempts": 3
+    }
+    
+    graph = build_orchestrator_graph()
+    await graph.ainvoke(state)
 
 async def run_full_pipeline(ctx, lead_id: int, user_id: int, brief_id: int):
     # 1. Investigating
@@ -209,6 +236,15 @@ async def run_full_pipeline(ctx, lead_id: int, user_id: int, brief_id: int):
             
             lead.status = LeadStatus.COMPLETED
             session.add(lead)
+            
+            # --- TOLL BOOTH DEDUCTION (MOCK) ---
+            try:
+                decrement_user_credits(session, user_id, amount=1)
+                print(f"Deducted 1 credit for user {user_id} (MOCK)")
+            except Exception as e:
+                print(f"Failed to deduct credit for user {user_id}: {e}")
+            # --- END TOLL BOOTH DEDUCTION ---
+            
             session.commit()
             print(f"Lead {lead_id} pipeline COMPLETED (MOCKED).")
             return
@@ -226,16 +262,55 @@ async def run_full_pipeline(ctx, lead_id: int, user_id: int, brief_id: int):
         })
         print(f"Draft result for lead {lead_id}: {draft_result.get('status')}")
     except Exception as e:
-        print(f"Error during drafting for lead {lead_id}: {e}")
+        import traceback
+        error_msg = f"{type(e).__name__}: {str(e) or 'Unknown error'}"
+        print(f"Error during drafting for lead {lead_id}: {error_msg}")
+        traceback.print_exc()
         with Session(engine) as session:
             lead = session.get(Lead, lead_id)
-            lead.enrichment_notes = (lead.enrichment_notes or "") + f" | Draft failed: {e}"
+            lead.enrichment_notes = (lead.enrichment_notes or "") + f" | Draft failed: {error_msg}"
             session.add(lead)
             session.commit()
     
-    with Session(engine) as session:
-        lead = session.get(Lead, lead_id)
-        lead.status = LeadStatus.COMPLETED
-        session.add(lead)
-        session.commit()
-        print(f"Lead {lead_id} pipeline COMPLETED.")
+    try:
+        with Session(engine) as session:
+            lead = session.get(Lead, lead_id)
+            lead.status = LeadStatus.COMPLETED
+            session.add(lead)
+            
+            # --- TOLL BOOTH DEDUCTION ---
+            try:
+                decrement_user_credits(session, user_id, amount=1)
+                print(f"Deducted 1 credit for user {user_id}")
+            except Exception as e:
+                print(f"Failed to deduct credit for user {user_id}: {e}")
+            # --- END TOLL BOOTH DEDUCTION ---
+            
+            session.commit()
+            print(f"Lead {lead_id} pipeline COMPLETED.")
+    finally:
+        # Recursive wake-up logic
+        with Session(engine) as session:
+            # Count leads that successfully completed or are still being processed
+            completed_leads = session.exec(
+                select(Lead).where(
+                    Lead.campaign_brief_id == brief_id,
+                    Lead.status.in_([LeadStatus.COMPLETED, LeadStatus.DRAFTING])
+                )
+            ).all()
+            completed_count = len(completed_leads)
+            
+            # Count leads currently queued
+            queued_leads = session.exec(
+                select(Lead).where(
+                    Lead.campaign_brief_id == brief_id,
+                    Lead.status == LeadStatus.QUEUED
+                )
+            ).all()
+            queued_count = len(queued_leads)
+            
+            if completed_count < 100 and queued_count == 0:
+                print(f"[Worker] Target missed (Completed: {completed_count}, Queued: 0). Waking orchestrator...")
+                redis_pool = ctx.get("redis")
+                if redis_pool:
+                    await redis_pool.enqueue_job('run_orchestrator_job', user_id, brief_id)
