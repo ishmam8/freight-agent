@@ -24,6 +24,8 @@ interface CampaignBrief {
   banned_terms: string[];
   buyer_titles: string[];
   exa_search_queries: string[];
+  sender_name?: string;
+  sender_company?: string;
 }
 
 interface Message {
@@ -44,6 +46,8 @@ interface LeadResult {
   hook_type?: string | null;
   word_count?: number | null;
   rejection_reason?: string | null;
+  web_founders_json?: string | null;
+  web_emails_json?: string | null;
 }
 
 interface Conversation {
@@ -59,10 +63,12 @@ export default function NewCampaignPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
 
+  const [mode, setMode] = useState<'express' | 'chat'>('chat');
   const [messages, setMessages] = useState<Message[]>([
-    { role: "ai", content: "Hi! What kind of campaign would you like to build today? Tell me who you're targeting and what you're offering." }
+    { role: "ai", content: "Hey! I'm your Campaign Planner. What kind of companies are we targeting today, and what's the value proposition?" }
   ]);
   const [input, setInput] = useState("");
+  const [expressPrompt, setExpressPrompt] = useState("");
   const [brief, setBrief] = useState<CampaignBrief | null>(null);
 
   const [isDrafting, setIsDrafting] = useState(false);
@@ -176,12 +182,11 @@ export default function NewCampaignPage() {
     ]);
   };
 
-  const handleSendMessage = async () => {
-    if (!input.trim()) return;
+  const handleExpressSubmit = async () => {
+    if (!expressPrompt.trim()) return;
 
-    const userPrompt = input.trim();
-    setMessages(prev => [...prev, { role: "user", content: userPrompt }]);
-    setInput("");
+    const userPrompt = expressPrompt.trim();
+    setExpressPrompt("");
     setIsDrafting(true);
     setError(null);
 
@@ -212,9 +217,67 @@ export default function NewCampaignPage() {
           setActiveConversationId(data.conversation_id);
           fetchConversations();
         }
+      } else {
+        throw new Error("Unexpected response format.");
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setIsDrafting(false);
+    }
+  };
 
-        const aiMessage = data.ai_message || "I've drafted a Campaign Blueprint based on your request. Please review it on the right.";
-        setMessages(prev => [...prev, { role: "ai", content: aiMessage }]);
+  const handleSendMessage = async () => {
+    if (!input.trim()) return;
+
+    const userPrompt = input.trim();
+    const newMessages = [...messages, { role: "user" as const, content: userPrompt }];
+    setMessages(newMessages);
+    setInput("");
+    setIsDrafting(true);
+    setError(null);
+
+    try {
+      const token = localStorage.getItem("token");
+
+      const res = await fetch("/api/campaigns/planner/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ messages: newMessages })
+      });
+
+      if (!res.ok) throw new Error("Failed to get chat response.");
+
+      const data = await res.json();
+      if (data.status === "success" && data.response) {
+        const text = data.response;
+        
+        // Auto-Launch Interceptor
+        const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || text.match(/```\n([\s\S]*?)\n```/);
+        
+        if (jsonMatch) {
+          try {
+            const parsed = JSON.parse(jsonMatch[1]);
+            setBrief({
+              original_prompt: "Generated via Co-Pilot Mode",
+              target_audience: parsed.target_audience || "",
+              value_proposition: parsed.value_proposition || "",
+              sender_name: parsed.sender_name || "Team",
+              sender_company: parsed.sender_company || "Company",
+              banned_terms: parsed.banned_terms || [],
+              buyer_titles: parsed.buyer_titles || [],
+              exa_search_queries: parsed.exa_search_queries || []
+            });
+            setMessages(prev => [...prev, { role: "ai", content: "Great! I've loaded your Campaign Blueprint. You can review it and deploy when ready." }]);
+          } catch (e) {
+            setMessages(prev => [...prev, { role: "ai", content: text }]);
+          }
+        } else {
+          setMessages(prev => [...prev, { role: "ai", content: text }]);
+        }
       } else {
         throw new Error("Unexpected response format.");
       }
@@ -387,57 +450,97 @@ export default function NewCampaignPage() {
         </div>
       </div>
 
-      {/* 2. MIDDLE PANEL (The Chat Box) */}
+      {/* 2. MIDDLE PANEL (The Input Box) */}
       <div className="flex-1 min-w-[350px] max-w-2xl flex flex-col border-r border-[#2F3336] bg-[#0E0F11]">
-        <div className="p-4 border-b border-[#2F3336] bg-[#0E0F11]/95 backdrop-blur z-10">
+        <div className="p-4 border-b border-[#2F3336] bg-[#0E0F11]/95 backdrop-blur z-10 flex flex-col gap-4">
           <h2 className="font-semibold text-white">Freight Agent</h2>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-4 space-y-6">
-          {messages.map((msg, i) => (
-            <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[85%] p-3.5 leading-relaxed ${msg.role === "user"
-                ? "bg-[#202327] text-white rounded-2xl rounded-br-sm"
-                : "bg-transparent text-white border border-[#2F3336] rounded-2xl rounded-bl-sm"
-                }`}>
-                {msg.content}
-              </div>
-            </div>
-          ))}
-          {isDrafting && (
-            <div className="flex justify-start">
-              <div className="max-w-[80%] p-3.5 rounded-2xl bg-transparent border border-[#2F3336] text-white animate-pulse rounded-bl-sm">
-                Thinking...
-              </div>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-
-        <div className="p-4 bg-[#0E0F11]">
-          <div className="flex gap-2 relative">
-            <Textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendMessage();
-                }
-              }}
-              placeholder="Ask anything..."
-              className="resize-none min-h-[60px] max-h-[120px] bg-[#202327] border-transparent text-white pr-12 focus-visible:ring-1 focus-visible:ring-[#71767B] rounded-2xl placeholder:text-white"
-            />
-            <Button
-              size="icon"
-              className="absolute right-2 bottom-2 h-9 w-9 bg-white hover:bg-[#E7E9EA] text-black rounded-xl transition-colors disabled:opacity-50"
-              onClick={handleSendMessage}
-              disabled={isDrafting || !input.trim()}
+          <div className="flex p-1 bg-[#16181C] rounded-xl border border-[#2F3336] max-w-[240px]">
+            <button
+              onClick={() => setMode('chat')}
+              className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-colors ${mode === 'chat' ? 'bg-[#2F3336] text-white shadow' : 'text-gray-400 hover:text-white'}`}
             >
-              <Send className="w-4 h-4" />
-            </Button>
+              Co-Pilot Mode
+            </button>
+            <button
+              onClick={() => setMode('express')}
+              className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-colors ${mode === 'express' ? 'bg-[#2F3336] text-white shadow' : 'text-gray-400 hover:text-white'}`}
+            >
+              Express Mode
+            </button>
           </div>
         </div>
+
+        {mode === 'chat' ? (
+          <>
+            <div className="flex-1 overflow-y-auto p-4 space-y-6">
+              {messages.map((msg, i) => (
+                <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                  <div className={`max-w-[85%] p-3.5 leading-relaxed ${msg.role === "user"
+                    ? "bg-[#202327] text-white rounded-2xl rounded-br-sm"
+                    : "bg-transparent text-white border border-[#2F3336] rounded-2xl rounded-bl-sm whitespace-pre-wrap"
+                    }`}>
+                    {msg.content}
+                  </div>
+                </div>
+              ))}
+              {isDrafting && (
+                <div className="flex justify-start">
+                  <div className="max-w-[80%] p-3.5 rounded-2xl bg-transparent border border-[#2F3336] text-white animate-pulse rounded-bl-sm">
+                    Thinking...
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            <div className="p-4 bg-[#0E0F11]">
+              <div className="flex gap-2 relative">
+                <Textarea
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }
+                  }}
+                  placeholder="Ask anything..."
+                  className="resize-none min-h-[60px] max-h-[120px] bg-[#202327] border-transparent text-white pr-12 focus-visible:ring-1 focus-visible:ring-[#71767B] rounded-2xl placeholder:text-white"
+                />
+                <Button
+                  size="icon"
+                  className="absolute right-2 bottom-2 h-9 w-9 bg-white hover:bg-[#E7E9EA] text-black rounded-xl transition-colors disabled:opacity-50"
+                  onClick={handleSendMessage}
+                  disabled={isDrafting || !input.trim()}
+                >
+                  <Send className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 flex flex-col p-6 overflow-hidden">
+            <div className="flex-1 flex flex-col bg-[#16181C] border border-[#2F3336] rounded-2xl p-4 shadow-sm relative">
+              <label className="text-sm font-semibold text-white mb-2 ml-1">Campaign Prompt</label>
+              <Textarea
+                value={expressPrompt}
+                onChange={(e) => setExpressPrompt(e.target.value)}
+                placeholder="Describe your target audience and value proposition..."
+                className="flex-1 resize-none bg-transparent border-transparent text-white focus-visible:ring-0 text-base leading-relaxed placeholder:text-[#71767B]"
+              />
+              <div className="absolute bottom-4 right-4 flex items-center justify-end">
+                <Button
+                  onClick={handleExpressSubmit}
+                  disabled={isDrafting || !expressPrompt.trim()}
+                  className="bg-white hover:bg-[#E7E9EA] text-black font-semibold rounded-full px-6 h-10 flex gap-2 items-center"
+                >
+                  {isDrafting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />}
+                  {isDrafting ? "Generating..." : "Generate Blueprint"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 3. RIGHT PANEL (Blueprint or Mission Control) */}
@@ -491,7 +594,7 @@ export default function NewCampaignPage() {
             <div className="flex-1 p-6 overflow-y-auto custom-scrollbar bg-black">
               <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
                 <CheckCircle2 className="w-5 h-5 text-white" />
-                Execution Log
+                Company List
               </h2>
 
               <div className="rounded-2xl border border-[#2F3336] overflow-hidden bg-[#16181C]">
@@ -499,9 +602,9 @@ export default function NewCampaignPage() {
                   <TableHeader>
                     <TableRow className="border-[#2F3336] hover:bg-transparent">
                       <TableHead className="text-white font-semibold py-4">Target</TableHead>
+                      <TableHead className="text-white font-semibold py-4">Contacts</TableHead>
                       <TableHead className="text-white font-semibold py-4">State</TableHead>
-                      <TableHead className="text-white font-semibold py-4">Vector</TableHead>
-                      <TableHead className="text-right text-white font-semibold py-4">Payload</TableHead>
+                      <TableHead className="text-right text-white font-semibold py-4 px-5">Drafts</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -520,20 +623,69 @@ export default function NewCampaignPage() {
                             {lead.website_url}
                           </div>
                         </TableCell>
+                        <TableCell className="align-top text-white py-4">
+                          {(() => {
+                            if (lead.status.toLowerCase() !== 'completed') {
+                              return <span className="text-white text-xs italic">Resolving...</span>;
+                            }
+                            
+                            let founders: unknown[] = [];
+                            let emails: unknown[] = [];
+                            try {
+                              if (lead.web_founders_json) founders = JSON.parse(lead.web_founders_json);
+                              if (lead.web_emails_json) emails = JSON.parse(lead.web_emails_json);
+                            } catch (_) {}
+                            
+                            const uniqueFounders: string[] = [];
+                            const seenFounders = new Set<string>();
+                            for (const f of founders) {
+                              if (!f) continue;
+                              const display = typeof f === 'object' ? String((f as Record<string, unknown>).name || JSON.stringify(f)) : String(f);
+                              const lower = display.toLowerCase().trim();
+                              if (!seenFounders.has(lower)) {
+                                seenFounders.add(lower);
+                                uniqueFounders.push(display);
+                              }
+                            }
+                            
+                            const uniqueEmails: string[] = [];
+                            const seenEmails = new Set<string>();
+                            for (const e of emails) {
+                              if (!e) continue;
+                              const display = typeof e === 'object' ? String((e as Record<string, unknown>).email || (e as Record<string, unknown>).value || JSON.stringify(e)) : String(e);
+                              const lower = display.toLowerCase().trim();
+                              if (!seenEmails.has(lower)) {
+                                seenEmails.add(lower);
+                                uniqueEmails.push(display);
+                              }
+                            }
+                            
+                            const maxLen = Math.max(uniqueFounders.length, uniqueEmails.length);
+                            if (maxLen === 0) {
+                              return <span className="text-white text-xs italic">Not Found</span>;
+                            }
+                            
+                            return (
+                              <div className="space-y-3">
+                                {Array.from({ length: maxLen }).map((_, i) => {
+                                  const founderDisplay = uniqueFounders[i] || null;
+                                  const emailDisplay = uniqueEmails[i] || null;
+                                  
+                                  return (
+                                    <div key={i}>
+                                      {founderDisplay && <div className="font-medium">{founderDisplay}</div>}
+                                      {emailDisplay && <div className="text-xs text-gray-400 mt-1">{emailDisplay}</div>}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })()}
+                        </TableCell>
                         <TableCell className="align-top py-4">
                           <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold uppercase ${lead.status.toLowerCase() === 'rejected' ? 'bg-red-950/30 text-red-500 border border-red-900/50' : 'bg-white text-black'}`}>
                             {lead.status}
                           </span>
-                        </TableCell>
-                        <TableCell className="align-top text-white py-4">
-                          {lead.contact_name ? (
-                            <>
-                              <div className="font-medium">{lead.contact_name}</div>
-                              <div className="text-xs text-white mt-1">{lead.contact_email}</div>
-                            </>
-                          ) : (
-                            <span className="text-white text-xs italic">Resolving...</span>
-                          )}
                         </TableCell>
                         <TableCell className="text-right align-top py-4">
                           {lead.status.toLowerCase() === 'rejected' ? (

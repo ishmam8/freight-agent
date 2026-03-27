@@ -15,6 +15,7 @@ export default function SettingsPage() {
   
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -119,6 +120,33 @@ export default function SettingsPage() {
     return <div className="p-10 flex justify-center items-center min-h-screen bg-black text-white">Loading...</div>;
   }
 
+  const handleCheckout = async (action: "priority_air" | "buy_credits") => {
+    if (!token) return;
+    
+    setCheckoutLoading(action);
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/billing/checkout`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ action, user_id: profile?.id || "temp_user_id" }),
+      });
+
+      const data = await response.json();
+      if (data.checkout_url) {
+        window.location.href = data.checkout_url;
+      } else {
+        console.error("No checkout url returned");
+        setCheckoutLoading(null);
+      }
+    } catch (error) {
+      console.error("Error creating checkout session:", error);
+      setCheckoutLoading(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-black text-white font-sans selection:bg-[#333] selection:text-white py-10">
       <div className="container mx-auto space-y-8 max-w-3xl px-4 md:px-0">
@@ -134,6 +162,45 @@ export default function SettingsPage() {
             </Button>
           </Link>
         </div>
+
+        {/* Form Container */}
+        {/* Billing & Credits Section */}
+        {profile && (
+          <div className="bg-[#16181C] border border-[#2F3336] rounded-2xl p-8">
+            <h2 className="text-xl font-bold text-white mb-6">Billing & Credits</h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              <div className="bg-[#202327] border border-[#2F3336] rounded-xl p-5">
+                <div className="text-sm font-bold text-white mb-1 uppercase tracking-widest text-zinc-400">Subscription Tier</div>
+                <div className="text-2xl font-bold text-white flex items-center gap-2">
+                  {profile.subscription_tier === 'priority_air' ? 'Priority Air' : 
+                   profile.subscription_tier === 'standard_freight' ? 'Standard Freight' : 'Free Tier'}
+                </div>
+                {(profile.subscription_tier === "free" || profile.subscription_tier === "standard_freight") && (
+                  <Button
+                    onClick={() => handleCheckout("priority_air")}
+                    disabled={checkoutLoading !== null}
+                    className="mt-4 w-full bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 hover:text-amber-400 border border-amber-500/20 font-bold transition-colors"
+                  >
+                    {checkoutLoading === "priority_air" ? "Loading..." : "Upgrade to Priority Air ($25)"}
+                  </Button>
+                )}
+              </div>
+              
+              <div className="bg-[#202327] border border-[#2F3336] rounded-xl p-5">
+                <div className="text-sm font-bold text-white mb-1 uppercase tracking-widest text-zinc-400">Available Credits</div>
+                <div className="text-2xl font-bold text-white">{profile.credits || 0}</div>
+                <Button
+                  onClick={() => handleCheckout("buy_credits")}
+                  disabled={checkoutLoading !== null}
+                  className="mt-4 w-full bg-white hover:bg-[#E7E9EA] text-black font-bold transition-colors"
+                >
+                  {checkoutLoading === "buy_credits" ? "Loading..." : "Top-Up 50 Credits ($10)"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Form Container */}
         <div className="bg-[#16181C] border border-[#2F3336] rounded-2xl p-8">

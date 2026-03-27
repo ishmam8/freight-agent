@@ -38,6 +38,12 @@ class PromptRequest(BaseModel):
     prompt: str
     conversation_id: Optional[int] = None
 
+class UserCreate(BaseModel):
+    email: str
+    password: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+
 class UserProfileUpdate(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
@@ -50,7 +56,9 @@ class UserProfileResponse(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     email: str
-    tier: str
+    subscription_tier: str
+    credits: int
+    stripe_customer_id: Optional[str] = None
 
 class LaunchRequest(BaseModel):
     conversation_id: int
@@ -66,3 +74,6 @@ class LaunchRequest(BaseModel):
 class DraftUpdateRequest(BaseModel):
     subject: str
     body: str
+
+class CheckoutRequest(BaseModel):
+    action: str

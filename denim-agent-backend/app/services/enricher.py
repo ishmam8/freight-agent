@@ -354,7 +354,7 @@ async def enrich_one_lead(lead: Lead, client: httpx.AsyncClient, session: Sessio
     print(f"[Enriching] {lead.company_name} -> {domain}")
 
     user = session.get(User, lead.user_id) if lead.user_id else None
-    tier = user.tier if user else "free"
+    tier = user.subscription_tier if user else "free"
 
     if tier == "free":
         print(f"[Tier] Free tier detected, skipping Apollo and Hunter")

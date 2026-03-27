@@ -9,6 +9,10 @@ engine = create_engine(sqlite_url, echo=False)
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
 
+def get_session():
+    with Session(engine) as session:
+        yield session
+
 def upsert_lead(session: Session, lead_data: LeadCreate) -> bool:
     normalized_url = lead_data.website_url 
     statement = select(Lead).where(Lead.website_url == normalized_url)

@@ -1,10 +1,13 @@
+import os
+import httpx
+from pydantic import BaseModel
 from arq import create_pool
 from arq.connections import RedisSettings
 from app.core.config import settings
 from typing import List, Any, Optional
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, BackgroundTasks
+from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException, status
 from sqlmodel import Session, select
 
 from app.api.deps import get_current_user, get_db
@@ -14,6 +17,66 @@ from app.services.brief_parser import parse_campaign_brief
 from app.services.orchestrator_graph import build_orchestrator_graph
 
 router = APIRouter()
+
+class ChatTurn(BaseModel):
+    role: str
+    content: str
+
+class PlannerChatRequest(BaseModel):
+    messages: List[ChatTurn]
+
+@router.post("/planner/chat")
+async def planner_chat(
+    request: PlannerChatRequest,
+    current_user: User = Depends(get_current_user)
+) -> Any:
+    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    if not api_key:
+        return {"status": "error", "message": "GEMINI_API_KEY is missing from the environment."}
+        
+    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+    headers = {
+        "x-goog-api-key": api_key,
+        "Content-Type": "application/json",
+    }
+    
+    system_instruction = (
+        "You are an elite B2B Campaign Planner Agent. Help the user draft a campaign brief conversationally. "
+        "You MUST collect exactly these 4 things: 1. Target Audience/ICP, 2. Value Proposition, 3. Sender Name, 4. Sender Company. "
+        "Ask only one clarifying question at a time. Once you have all 4, summarize the campaign and ask: 'Are you ready to approve and launch this campaign?' "
+        "If the user explicitly approves, output ONLY a raw JSON block wrapped in ```json ... ``` containing target_audience, value_proposition, sender_name, sender_company."
+    )
+    
+    formatted_messages = [
+        {"role": msg.role, "parts": [{"text": msg.content}]} 
+        for msg in request.messages
+    ]
+    
+    payload = {
+        "systemInstruction": {"parts": [{"text": system_instruction}]},
+        "contents": formatted_messages,
+        "generationConfig": {
+            "temperature": 0.7
+        }
+    }
+    
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        try:
+            response = await client.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            data = response.json()
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+            
+    text_output = ""
+    candidates = data.get("candidates", [])
+    if candidates:
+        content = candidates[0].get("content", {})
+        parts = content.get("parts", [])
+        if parts and "text" in parts[0]:
+            text_output = parts[0]["text"]
+            
+    return {"status": "success", "response": text_output.strip()}
 
 
 @router.post("/draft-brief")
@@ -68,6 +131,12 @@ async def launch_campaign(
     """
     Takes an approved brief, saves it, and orchestrates the search graph via ARQ background worker.
     """
+    if current_user.credits <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Out of Credits, please buy more credits or wait for 3 days"
+        )
+
     # 1. Create the Brief
     brief = CampaignBrief(
         user_id=current_user.id,
@@ -195,6 +264,9 @@ def get_campaign_results(
         if lead.status in [LeadStatus.DRAFTING, LeadStatus.COMPLETED]:
             enriched = db.exec(select(EnrichedLead).where(EnrichedLead.lead_id == lead.id)).first()
             if enriched:
+                item["web_founders_json"] = enriched.web_founders_json
+                item["web_emails_json"] = enriched.web_emails_json
+                
                 from app.models.domain import SelectedContact
                 sc = db.exec(select(SelectedContact).where(SelectedContact.enriched_lead_id == enriched.id)).first()
                 if sc:

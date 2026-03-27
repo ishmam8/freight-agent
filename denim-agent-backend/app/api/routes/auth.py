@@ -9,9 +9,36 @@ from app.core import security
 from app.api.deps import get_db, get_current_user
 from app.core.config import settings
 from app.models.domain import User
-from app.models.schemas import Token, UserProfileUpdate, UserProfileResponse
+from app.models.schemas import Token, UserProfileUpdate, UserProfileResponse, UserCreate
 
 router = APIRouter()
+
+@router.post("/signup", response_model=UserProfileResponse)
+def signup(
+    user_in: UserCreate,
+    db: Session = Depends(get_db)
+) -> Any:
+    """
+    Create new user.
+    """
+    user = db.exec(select(User).where(User.email == user_in.email)).first()
+    if user:
+        raise HTTPException(
+            status_code=400,
+            detail="The user with this email already exists in the system.",
+        )
+    user_create = User(
+        email=user_in.email,
+        hashed_password=security.get_password_hash(user_in.password),
+        first_name=user_in.first_name,
+        last_name=user_in.last_name,
+        subscription_tier="free",
+        credits=100
+    )
+    db.add(user_create)
+    db.commit()
+    db.refresh(user_create)
+    return user_create
 
 @router.post("/login/access-token", response_model=Token)
 def login_access_token(

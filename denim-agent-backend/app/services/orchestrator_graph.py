@@ -42,7 +42,7 @@ async def search_node(state: OrchestratorState) -> OrchestratorState:
     queries = state.get("current_queries", [])
     found_leads = state.get("found_leads", [])
     rejected_leads = state.get("rejected_leads", [])
-    target_count = state.get("target_count", 5)
+    target_count = state.get("target_count", 100)
     attempts = state.get("attempts", 0)
     brief_id = state.get("brief_id")
     user_id = state.get("user_id")
@@ -325,7 +325,7 @@ async def enqueue_node(state: OrchestratorState) -> OrchestratorState:
 
 def evaluate_router(state: OrchestratorState) -> str:
     found_leads = state.get("found_leads", [])
-    target_count = state.get("target_count", 5)
+    target_count = state.get("target_count", 100)
     attempts = state.get("attempts", 0)
     max_attempts = state.get("max_attempts", 3)
     

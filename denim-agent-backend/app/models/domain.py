@@ -24,7 +24,9 @@ class User(SQLModel, table=True):
     last_name: Optional[str] = Field(default=None)
     email: str = Field(unique=True, index=True)
     hashed_password: str
-    tier: str = Field(default="free")
+    stripe_customer_id: Optional[str] = Field(default=None, unique=True)
+    subscription_tier: str = Field(default="free")
+    credits: int = Field(default=100)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class CampaignBrief(SQLModel, table=True):

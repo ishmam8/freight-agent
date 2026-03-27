@@ -10,6 +10,7 @@ from app.services.selector import build_candidates, pick_best_candidate, upsert_
 from app.services.drafting.drafter_graph import build_drafter_graph
 from app.services.research.researcher import run_prompt_research
 from app.services.orchestrator_graph import build_orchestrator_graph
+from app.services.billing import decrement_user_credits
 
 from urllib.parse import urlparse
 
@@ -24,7 +25,7 @@ async def run_campaign_from_prompt(ctx, prompt: str, user_id: int, brief_id: int
     print(f"Running campaign for prompt: {prompt}")
     redis_pool = ctx.get("redis")
     
-    desired_count = 5
+    desired_count = 100
     successful_leads = []
     exclude_domains = []
     
@@ -115,7 +116,7 @@ async def run_orchestrator_job(ctx, user_id: int, brief_id: int):
         "brief": brief_dict,
         "current_queries": current_queries.copy() if current_queries else [],
         "found_leads": [],
-        "target_count": 5,
+        "target_count": 100,
         "attempts": 0,
         "max_attempts": 3
     }
@@ -235,6 +236,15 @@ async def run_full_pipeline(ctx, lead_id: int, user_id: int, brief_id: int):
             
             lead.status = LeadStatus.COMPLETED
             session.add(lead)
+            
+            # --- TOLL BOOTH DEDUCTION (MOCK) ---
+            try:
+                decrement_user_credits(session, user_id, amount=1)
+                print(f"Deducted 1 credit for user {user_id} (MOCK)")
+            except Exception as e:
+                print(f"Failed to deduct credit for user {user_id}: {e}")
+            # --- END TOLL BOOTH DEDUCTION ---
+            
             session.commit()
             print(f"Lead {lead_id} pipeline COMPLETED (MOCKED).")
             return
@@ -267,6 +277,15 @@ async def run_full_pipeline(ctx, lead_id: int, user_id: int, brief_id: int):
             lead = session.get(Lead, lead_id)
             lead.status = LeadStatus.COMPLETED
             session.add(lead)
+            
+            # --- TOLL BOOTH DEDUCTION ---
+            try:
+                decrement_user_credits(session, user_id, amount=1)
+                print(f"Deducted 1 credit for user {user_id}")
+            except Exception as e:
+                print(f"Failed to deduct credit for user {user_id}: {e}")
+            # --- END TOLL BOOTH DEDUCTION ---
+            
             session.commit()
             print(f"Lead {lead_id} pipeline COMPLETED.")
     finally:
@@ -290,7 +309,7 @@ async def run_full_pipeline(ctx, lead_id: int, user_id: int, brief_id: int):
             ).all()
             queued_count = len(queued_leads)
             
-            if completed_count < 5 and queued_count == 0:
+            if completed_count < 100 and queued_count == 0:
                 print(f"[Worker] Target missed (Completed: {completed_count}, Queued: 0). Waking orchestrator...")
                 redis_pool = ctx.get("redis")
                 if redis_pool:
