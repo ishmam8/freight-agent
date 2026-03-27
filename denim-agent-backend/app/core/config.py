@@ -6,7 +6,7 @@ from typing import Optional
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "Denim Sourcing Agent"
+    PROJECT_NAME: str = "cargoitai"
     
     # Optional DB configs, typically picked up from env or defaults
     DATABASE_URL: Optional[str] = os.getenv("DATABASE_URL", "sqlite:///denim_leads.db")
