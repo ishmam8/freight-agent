@@ -15,8 +15,8 @@ from app.models.domain import Lead, LeadStatus, CampaignBrief, LeadCategory
 load_dotenv()
 exa = Exa(api_key=os.getenv("EXA_API_KEY"))
 
-DATABASE_URL = "sqlite:///denim_leads.db"
-engine = create_engine(DATABASE_URL, echo=False)
+from app.core.config import settings
+engine = create_engine(settings.DATABASE_URL, echo=False)
 
 gemini_api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
 

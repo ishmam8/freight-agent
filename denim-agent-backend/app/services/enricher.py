@@ -17,8 +17,8 @@ APOLLO_API_KEY = os.getenv("APOLLO_API_KEY")
 HUNTER_API_KEY = os.getenv("HUNTER_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
 
-DATABASE_URL = "sqlite:///denim_leads.db"
-engine = create_engine(DATABASE_URL, echo=False)
+from app.core.config import settings
+engine = create_engine(settings.DATABASE_URL, echo=False)
 
 EMAIL_REGEX = re.compile(r"\b[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[A-Za-z]{2,}\b")
 

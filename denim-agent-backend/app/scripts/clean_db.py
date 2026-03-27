@@ -4,8 +4,8 @@ from sqlmodel import Session, select, create_engine, SQLModel
 
 from app.models.domain import EnrichedLead, Lead, SelectedContact, OutreachDraft
 
-DATABASE_URL = "sqlite:///denim_leads.db"
-engine = create_engine(DATABASE_URL, echo=False)
+from app.core.config import settings
+engine = create_engine(settings.DATABASE_URL, echo=False)
 
 MODEL_MAP: dict[str, Type[SQLModel]] = {
     "enrichedlead": EnrichedLead,

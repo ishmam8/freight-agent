@@ -6,8 +6,8 @@ from sqlmodel import Session, create_engine, select
 from app.services.drafting.drafter_graph import build_drafter_graph, create_db_and_tables
 from app.models.domain import SelectedContact, OutreachDraft
 
-DATABASE_URL = "sqlite:///denim_leads.db"
-engine = create_engine(DATABASE_URL, echo=False)
+from app.core.config import settings
+engine = create_engine(settings.DATABASE_URL, echo=False)
 
 
 async def main():

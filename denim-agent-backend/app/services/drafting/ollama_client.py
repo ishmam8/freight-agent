@@ -7,8 +7,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:14b-instruct")
+GROQ_BASE_URL = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama3-70b-8192")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 
 def strip_json_fence(text: str) -> str:
@@ -74,24 +75,26 @@ Return valid JSON only. Do not use markdown formatting or code blocks.
 """.strip()
 
     payload = {
-        "model": OLLAMA_MODEL,
+        "model": GROQ_MODEL,
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": json.dumps(brief, ensure_ascii=False, indent=2)},
         ],
-        "stream": False,
-        "format": "json",
-        "options": {
-            "temperature": 0.4 # Keep this low for strict formatting, but high enough for creative hooks
-        },
+        "temperature": 0.4,
+        "response_format": {"type": "json_object"}
+    }
+
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json"
     }
 
     async with httpx.AsyncClient(timeout=300.0) as client:
-        response = await client.post(f"{OLLAMA_BASE_URL}/api/chat", json=payload)
+        response = await client.post(f"{GROQ_BASE_URL}/chat/completions", json=payload, headers=headers)
         response.raise_for_status()
         data = response.json()
 
-    content = data.get("message", {}).get("content", "")
+    content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
     clean = strip_json_fence(content)
     parsed = json.loads(clean)
 

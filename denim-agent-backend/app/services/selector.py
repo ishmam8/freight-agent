@@ -15,8 +15,8 @@ Layer2 TODO: it implements a LLM verification on the top 1 to 3 candidates only.
 Ask: which one is real & best for this outreach objective? why? is there any red flag?
 '''
 
-DATABASE_URL = "sqlite:///denim_leads.db"
-engine = create_engine(DATABASE_URL, echo=False)
+from app.core.config import settings
+engine = create_engine(settings.DATABASE_URL, echo=False)
 
 GENERIC_PREFIXES = {
     "info", "hello", "contact", "support", "sales", "wholesale", "team", "orders"
