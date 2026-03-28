@@ -2,8 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Send, Rocket, Sparkles, AlertCircle, CheckCircle2, X, Loader2, MessageSquare, Plus, LogOut, Settings } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "../../components/ui/button";
+import { Textarea } from "../../components/ui/textarea";
 import {
   Table,
   TableBody,
@@ -11,9 +11,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { useAuth } from "@/lib/useAuth";
+} from "../../components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../../components/ui/dialog";
+import { useAuth } from "../../lib/useAuth";
 
 // --- Interfaces ---
 interface CampaignBrief {

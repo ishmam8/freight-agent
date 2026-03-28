@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { Zap, Package, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "./ui/button";
+import { Badge } from "./ui/badge";
 import { useRouter } from "next/navigation";
 
 interface UserProfile {

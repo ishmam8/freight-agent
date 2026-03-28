@@ -1,9 +1,9 @@
 "use client";
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
+import { Button } from "../components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "../components/ui/card"
+import { Badge } from "../components/ui/badge"
+import { Separator } from "../components/ui/separator"
 import { ArrowRight, Radar, ShieldCheck, Languages, Terminal, Check, Database, Compass, ClipboardCheck, PlaneTakeoff, Activity, Send, CheckCircle, Rocket, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
