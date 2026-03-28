@@ -156,7 +156,7 @@ export default function SettingsPage() {
           <h1 className="text-3xl font-bold tracking-tight text-white flex items-center gap-3">
             Settings
           </h1>
-          <Link href="/">
+          <Link href="/dashboard">
             <Button variant="outline" className="bg-transparent border-[#2F3336] text-white hover:bg-[#16181C] hover:text-white rounded-full px-6 h-11 font-semibold">
               Back to Dashboard
             </Button>
