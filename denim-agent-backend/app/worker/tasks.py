@@ -239,7 +239,7 @@ async def run_full_pipeline(ctx, lead_id: int, user_id: int, brief_id: int):
             
             # --- TOLL BOOTH DEDUCTION (MOCK) ---
             try:
-                decrement_user_credits(session, user_id, amount=1)
+                decrement_user_credits(user_id, session, amount=1)
                 print(f"Deducted 1 credit for user {user_id} (MOCK)")
             except Exception as e:
                 print(f"Failed to deduct credit for user {user_id}: {e}")
@@ -280,7 +280,7 @@ async def run_full_pipeline(ctx, lead_id: int, user_id: int, brief_id: int):
             
             # --- TOLL BOOTH DEDUCTION ---
             try:
-                decrement_user_credits(session, user_id, amount=1)
+                decrement_user_credits(user_id, session, amount=1)
                 print(f"Deducted 1 credit for user {user_id}")
             except Exception as e:
                 print(f"Failed to deduct credit for user {user_id}: {e}")
