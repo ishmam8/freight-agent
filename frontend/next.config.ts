@@ -19,7 +19,7 @@ import type { NextConfig } from "next";
 const nextConfig = {
   async rewrites() {
     // This grabs your Railway URL in production, but defaults to localhost for local dev
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL;
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
     
     return [
       {
