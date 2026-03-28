@@ -61,7 +61,7 @@ class UserProfileResponse(BaseModel):
     stripe_customer_id: Optional[str] = None
 
 class LaunchRequest(BaseModel):
-    conversation_id: int
+    conversation_id: Optional[int] = None
     original_prompt: str
     target_audience: str
     banned_terms: list[str]

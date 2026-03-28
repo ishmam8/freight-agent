@@ -162,6 +162,16 @@ async def launch_campaign(
             conv.campaign_brief_id = brief.id
             db.add(conv)
             db.commit()
+        else:
+            title = f"Campaign: {request.target_audience[:20]}..."
+            conv = Conversation(user_id=current_user.id, title=title, campaign_brief_id=brief.id)
+            db.add(conv)
+            db.commit()
+    else:
+        title = f"Campaign: {request.target_audience[:20]}..."
+        conv = Conversation(user_id=current_user.id, title=title, campaign_brief_id=brief.id)
+        db.add(conv)
+        db.commit()
 
     # 3. Trigger the Orchestrator via ARQ Redis
     redis_pool = await create_pool(RedisSettings.from_dsn(settings.REDIS_URL))
