@@ -121,7 +121,7 @@ async def search_node(state: OrchestratorState) -> OrchestratorState:
         response = exa.search_and_contents(
             current_query,
             type="neural",
-            num_results=needed * 5,
+            num_results=min(needed * 3, 15),
             category="company",
             summary=True,
             exclude_domains=exclude_domains if exclude_domains else None,
