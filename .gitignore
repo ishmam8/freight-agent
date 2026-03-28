@@ -23,8 +23,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/denim-agent-backend/lib/
+/denim-agent-backend/lib64/
 parts/
 sdist/
 var/
