@@ -48,7 +48,7 @@ async def planner_chat(
     )
     
     formatted_messages = [
-        {"role": msg.role, "parts": [{"text": msg.content}]} 
+        {"role": "model" if msg.role == "ai" else msg.role, "parts": [{"text": msg.content}]} 
         for msg in request.messages
     ]
     
