@@ -40,7 +40,9 @@ async def planner_chat(
         if request.messages:
             last_msg = request.messages[-1]
             db.add(ChatMessage(conversation_id=conv.id, role=last_msg.role, content=last_msg.content))
-            db.commit()
+        conv.updated_at = datetime.utcnow()
+        db.add(conv)
+        db.commit()
     else:
         user_msgs = [m.content for m in request.messages if m.role == "user"]
         title_text = user_msgs[0] if user_msgs else "New Campaign Chat"
