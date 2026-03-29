@@ -92,7 +92,7 @@ export default function NewCampaignPage() {
   }, [messages]);
 
   useEffect(() => {
-    fetchConversations();
+    fetchConversations(true);
   }, []);
 
   useEffect(() => {
@@ -127,16 +127,20 @@ export default function NewCampaignPage() {
   }, [launchSuccess, activeBriefId]);
 
   // --- API Handlers ---
-  const fetchConversations = async () => {
+  const fetchConversations = async (autoLoadLatest = false) => {
     try {
       const token = localStorage.getItem("token");
       const res = await fetch("/api/campaigns/conversations", {
-        headers: { ...(token ? { "Authorization": `Bearer ${token}` } : {}) }
+        headers: { ...(token ? { "Authorization": `Bearer ${token}` } : {}) },
+        cache: "no-store",
       });
       if (res.ok) {
         const data = await res.json();
         if (data.status === "success") {
           setConversations(data.conversations);
+          if (autoLoadLatest && data.conversations.length > 0) {
+            loadConversation(data.conversations[0].id);
+          }
         }
       }
     } catch (err) {
@@ -148,7 +152,8 @@ export default function NewCampaignPage() {
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(`/api/campaigns/conversations/${id}`, {
-        headers: { ...(token ? { "Authorization": `Bearer ${token}` } : {}) }
+        headers: { ...(token ? { "Authorization": `Bearer ${token}` } : {}) },
+        cache: "no-store",
       });
       if (res.ok) {
         const data = await res.json();
