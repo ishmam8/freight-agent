@@ -23,13 +23,38 @@ class ChatTurn(BaseModel):
     content: str
 
 class PlannerChatRequest(BaseModel):
-    messages: List[ChatTurn]
+    conversation_id: Optional[int] = None
+    messages: list[ChatTurn]
 
 @router.post("/planner/chat")
 async def planner_chat(
     request: PlannerChatRequest,
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ) -> Any:
+    if request.conversation_id:
+        conv = db.get(Conversation, request.conversation_id)
+        if not conv or conv.user_id != current_user.id:
+            return {"status": "error", "message": "Conversation not found"}
+        
+        if request.messages:
+            last_msg = request.messages[-1]
+            db.add(ChatMessage(conversation_id=conv.id, role=last_msg.role, content=last_msg.content))
+            db.commit()
+    else:
+        user_msgs = [m.content for m in request.messages if m.role == "user"]
+        title_text = user_msgs[0] if user_msgs else "New Campaign Chat"
+        title = title_text[:30] + "..." if len(title_text) > 30 else title_text
+        
+        conv = Conversation(user_id=current_user.id, title=title)
+        db.add(conv)
+        db.commit()
+        db.refresh(conv)
+        
+        for m in request.messages:
+            db.add(ChatMessage(conversation_id=conv.id, role=m.role, content=m.content))
+        db.commit()
+
     api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
     if not api_key:
         return {"status": "error", "message": "GEMINI_API_KEY is missing from the environment."}
@@ -41,10 +66,20 @@ async def planner_chat(
     }
     
     system_instruction = (
-        "You are an elite B2B Campaign Planner Agent. Help the user draft a campaign brief conversationally. "
-        "You MUST collect exactly these 4 things: 1. Target Audience/ICP, 2. Value Proposition, 3. Sender Name, 4. Sender Company. "
-        "Ask only one clarifying question at a time. Once you have all 4, summarize the campaign and ask: 'Are you ready to approve and launch this campaign?' "
-        "If the user explicitly approves, output ONLY a raw JSON block wrapped in ```json ... ``` containing target_audience, value_proposition, sender_name, sender_company."
+        "You are an elite B2B Campaign Planner Agent. Help the user draft a highly effective outbound campaign brief conversationally. "
+        "Your goal is to collect or collaboratively brainstorm 7 key parameters for their campaign.\n\n"
+        "STEPS:\n"
+        "1. First, establish the core: Ask the user for their Target Audience (ICP) and what their Value Proposition is. Just focus on these two if they haven't provided them.\n"
+        "2. Once you have the core, suggest 3-4 Ideal Buyer Titles (e.g., 'VP of Sales', 'Operations Director') that make sense for their audience and ask if they look good.\n"
+        "3. Ask if there are any specific Banned Terms or types of companies they definitely want to AVOID (e.g., 'B2C', 'retailers', 'agencies').\n"
+        "4. Ask for their Name (Sender Name) and Company (Sender Company).\n\n"
+        "RULES:\n"
+        "- Be conversational, consultative, and concise. Don't overwhelm the user with all questions at once.\n"
+        "- Generate highly optimized 'exa_search_queries' silently in the background (3 to 5 Google-like queries tailored to find only the target companies).\n"
+        "- Once all fields are confirmed, summarize the campaign beautifully. Then ask: 'Are you ready to approve and launch this campaign?'\n"
+        "- IF AND ONLY IF the user explicitly approves and says yes to launching, output ONLY a raw JSON block wrapped in ```json ... ``` containing ALL of the following keys:\n"
+        "  target_audience (string), value_proposition (string), sender_name (string), sender_company (string), "
+        "buyer_titles (array of strings), banned_terms (array of strings), and exa_search_queries (array of strings)."
     )
     
     formatted_messages = [
@@ -76,7 +111,11 @@ async def planner_chat(
         if parts and "text" in parts[0]:
             text_output = parts[0]["text"]
             
-    return {"status": "success", "response": text_output.strip()}
+    if text_output.strip():
+        db.add(ChatMessage(conversation_id=conv.id, role="ai", content=text_output.strip()))
+        db.commit()
+            
+    return {"status": "success", "response": text_output.strip(), "conversation_id": conv.id}
 
 
 @router.post("/draft-brief")

@@ -240,19 +240,28 @@ export default function NewCampaignPage() {
     try {
       const token = localStorage.getItem("token");
 
+      const payload: { messages: Message[]; conversation_id?: number } = { messages: newMessages };
+      if (activeConversationId) {
+        payload.conversation_id = activeConversationId;
+      }
+
       const res = await fetch("/api/campaigns/planner/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...(token ? { "Authorization": `Bearer ${token}` } : {})
         },
-        body: JSON.stringify({ messages: newMessages })
+        body: JSON.stringify(payload)
       });
 
       if (!res.ok) throw new Error("Failed to get chat response.");
 
       const data = await res.json();
       if (data.status === "success" && data.response) {
+        if (data.conversation_id && !activeConversationId) {
+          setActiveConversationId(data.conversation_id);
+          fetchConversations();
+        }
         const text = data.response;
         
         // Auto-Launch Interceptor
