@@ -58,7 +58,7 @@ interface Conversation {
 
 export default function NewCampaignPage() {
   const { isAuthenticated } = useAuth();
-  
+
   // --- State ---
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
@@ -268,10 +268,10 @@ export default function NewCampaignPage() {
           fetchConversations();
         }
         const text = data.response;
-        
+
         // Auto-Launch Interceptor
         const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || text.match(/```\n([\s\S]*?)\n```/);
-        
+
         if (jsonMatch) {
           try {
             const parsed = JSON.parse(jsonMatch[1]);
@@ -408,9 +408,9 @@ export default function NewCampaignPage() {
 
         {/* Branding & New Chat */}
         <div className="p-4 space-y-4">
-          <div className="flex items-center gap-2 px-2 py-1">
-            <Sparkles className="w-5 h-5 text-white" />
-            <span className="font-bold text-base tracking-wide text-white">Cargo.it</span>
+          <div className="flex items-center gap-3 px-2 py-1 cursor-pointer" onClick={() => window.location.href = "/"}>
+            <img src="/logo.jpg" alt="Logo" className="w-8 h-8 rounded-lg object-cover border border-[#2F3336]" />
+            <span className="font-bold text-lg tracking-tight text-white">Freight Agent</span>
           </div>
 
           <Button
@@ -447,7 +447,7 @@ export default function NewCampaignPage() {
 
         {/* User Footer */}
         <div className="p-4 border-t border-[#2F3336] space-y-1">
-          <button 
+          <button
             onClick={() => window.location.href = "/dashboard/settings"}
             className="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 text-white hover:bg-[#16181C] hover:text-white transition-colors"
           >
@@ -642,14 +642,14 @@ export default function NewCampaignPage() {
                             if (lead.status.toLowerCase() !== 'completed') {
                               return <span className="text-white text-xs italic">Resolving...</span>;
                             }
-                            
+
                             let founders: unknown[] = [];
                             let emails: unknown[] = [];
                             try {
                               if (lead.web_founders_json) founders = JSON.parse(lead.web_founders_json);
                               if (lead.web_emails_json) emails = JSON.parse(lead.web_emails_json);
-                            } catch (_) {}
-                            
+                            } catch (_) { }
+
                             const uniqueFounders: string[] = [];
                             const seenFounders = new Set<string>();
                             for (const f of founders) {
@@ -661,7 +661,7 @@ export default function NewCampaignPage() {
                                 uniqueFounders.push(display);
                               }
                             }
-                            
+
                             const uniqueEmails: string[] = [];
                             const seenEmails = new Set<string>();
                             for (const e of emails) {
@@ -673,18 +673,18 @@ export default function NewCampaignPage() {
                                 uniqueEmails.push(display);
                               }
                             }
-                            
+
                             const maxLen = Math.max(uniqueFounders.length, uniqueEmails.length);
                             if (maxLen === 0) {
                               return <span className="text-white text-xs italic">Not Found</span>;
                             }
-                            
+
                             return (
                               <div className="space-y-3">
                                 {Array.from({ length: maxLen }).map((_, i) => {
                                   const founderDisplay = uniqueFounders[i] || null;
                                   const emailDisplay = uniqueEmails[i] || null;
-                                  
+
                                   return (
                                     <div key={i}>
                                       {founderDisplay && <div className="font-medium">{founderDisplay}</div>}

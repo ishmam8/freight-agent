@@ -38,7 +38,7 @@ export default function CargoLanding() {
           },
           body: JSON.stringify({ action: 'priority_air', user_id: 'temp_user_id' })
         })
-        
+
         const data = await response.json()
         if (data.checkout_url) {
           window.location.href = data.checkout_url
@@ -65,7 +65,10 @@ export default function CargoLanding() {
     <div className="min-h-screen bg-background text-foreground schematic-bg font-sans tracking-tight">
       {/* Navigation */}
       <nav className="fixed top-0 w-full z-50 border-b border-white/10 bg-black/40 backdrop-blur-xl h-20 px-6 md:px-12 flex justify-between items-center">
-        <div className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-b from-zinc-200 to-zinc-800 tracking-tighter cursor-pointer" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>cargoit.ai</div>
+        <div className="flex items-center gap-3 cursor-pointer" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
+          <img src="/logo.jpg" alt="Logo" className="w-10 h-10 rounded-xl object-cover border border-white/10 shadow-lg" />
+          <div className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-b from-zinc-100 to-zinc-400 tracking-tighter">cargoit.ai</div>
+        </div>
         <div className="hidden md:flex items-center gap-10 text-sm font-medium text-muted-foreground">
           <a href="#pipeline" onClick={(e) => scrollToSection(e, "pipeline")} className="hover:text-primary transition-colors">Solutions</a>
           <a href="#pricing" onClick={(e) => scrollToSection(e, "pricing")} className="hover:text-primary transition-colors">Pricing</a>
@@ -134,49 +137,49 @@ export default function CargoLanding() {
         {/* Pipeline Section */}
         <section id="pipeline" className="py-24 bg-card/50 px-6">
           <div className="max-w-4xl mx-auto text-center mb-20 space-y-4">
-            <h2 className="text-4xl md:text-5xl font-bold tracking-tighter text-zinc-300 bg-clip-text bg-gradient-to-b from-zinc-200 to-zinc-800 pb-2">Your intelligent SDR that handles <br/>the grunt work exceptionally.</h2>
+            <h2 className="text-4xl md:text-5xl font-bold tracking-tighter text-zinc-300 bg-clip-text bg-gradient-to-b from-zinc-200 to-zinc-800 pb-2">Your intelligent SDR that handles <br />the grunt work exceptionally.</h2>
             <p className="text-muted-foreground font-medium tracking-tight">From market discovery to boardroom entry.</p>
           </div>
 
           <div className="max-w-2xl mx-auto relative space-y-16">
             <div className="absolute left-1/2 -translate-x-1/2 h-full w-[1px] bg-border" />
-            
+
             {[
-            { 
-              title: "Route Planning", 
-              desc: "Chat with our AI Co-Pilot to configure your waybill, target audience, and core value proposition.", 
-              icon: Compass 
-            },
-            { 
-              title: "Precision Radar", 
-              desc: "Advanced neural search scans the global market, bypassing dead links to hunt down high-intent companies.", 
-              icon: Radar 
-            },
-            { 
-              title: "Customs Clearance", 
-              desc: "Local AI strictly inspects each website, vetting for quality and quarantining bad fits or competitors.", 
-              icon: ClipboardCheck 
-            },
-            { 
-              title: "Manifest Verification", 
-              desc: "Deep data enrichment pinpoints the exact Consignee (Founder/CEO) and secures their verified email.", 
-              icon: ShieldCheck 
-            },
-            { 
-              title: "Cultural Packaging", 
-              desc: "Your raw pitch is translated into flawless, culturally native English tailored for decision-makers.", 
-              icon: Languages 
-            },
-            { 
-              title: "Final Dispatch", 
-              desc: "Your localized, highly personalized campaign is cleared for takeoff and delivered directly to their inbox.", 
-              icon: PlaneTakeoff 
-            },
-            { 
-              title: "The Control Tower", 
-              desc: "Monitor your global fleet, track delivery telemetry, and manage your pipeline from a high-end command center.", 
-              icon: Activity 
-            }
+              {
+                title: "Route Planning",
+                desc: "Chat with our AI Co-Pilot to configure your waybill, target audience, and core value proposition.",
+                icon: Compass
+              },
+              {
+                title: "Precision Radar",
+                desc: "Advanced neural search scans the global market, bypassing dead links to hunt down high-intent companies.",
+                icon: Radar
+              },
+              {
+                title: "Customs Clearance",
+                desc: "Local AI strictly inspects each website, vetting for quality and quarantining bad fits or competitors.",
+                icon: ClipboardCheck
+              },
+              {
+                title: "Manifest Verification",
+                desc: "Deep data enrichment pinpoints the exact Consignee (Founder/CEO) and secures their verified email.",
+                icon: ShieldCheck
+              },
+              {
+                title: "Cultural Packaging",
+                desc: "Your raw pitch is translated into flawless, culturally native English tailored for decision-makers.",
+                icon: Languages
+              },
+              {
+                title: "Final Dispatch",
+                desc: "Your localized, highly personalized campaign is cleared for takeoff and delivered directly to their inbox.",
+                icon: PlaneTakeoff
+              },
+              {
+                title: "The Control Tower",
+                desc: "Monitor your global fleet, track delivery telemetry, and manage your pipeline from a high-end command center.",
+                icon: Activity
+              }
             ].map((step, idx) => (
               <div key={idx} className={`flex items-center gap-8 ${idx % 2 === 0 ? 'md:flex-row' : 'md:flex-row-reverse'} relative z-10`}>
                 <div className="flex-1 text-center md:text-right">
@@ -193,11 +196,11 @@ export default function CargoLanding() {
         </section>
 
         {/* Terminal Section */}
-                {/* The Cargo Manifest (Live Product Demo) */}
+        {/* The Cargo Manifest (Live Product Demo) */}
         <section className="py-24 px-6 md:px-12 max-w-[1300px] mx-auto">
           <div className="mb-12">
             <Badge variant="outline" className="mb-4 bg-primary border-zinc-700 text-zinc-900 px-3 py-1 uppercase tracking-widest text-[10px] font-bold">
-              Dashboard 
+              Dashboard
             </Badge>
             <h2 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-b from-zinc-200 to-zinc-800 mb-4 tracking-tighter pb-2">
               The Cargo <span className="text-zinc-500">Manifest.</span>
@@ -220,7 +223,7 @@ export default function CargoLanding() {
             </CardHeader>
 
             <CardContent className="p-0 grid lg:grid-cols-12 h-auto lg:h-[650px] divide-y lg:divide-y-0 lg:divide-x divide-zinc-800/50 text-sm">
-              
+
               {/* LEFT PANEL: Freight Agent (Chat) */}
               <div className="lg:col-span-4 bg-[#09090b] flex flex-col h-[500px] lg:h-full relative">
                 <div className="p-4 border-b border-zinc-800/50 flex items-center justify-between">
@@ -230,7 +233,7 @@ export default function CargoLanding() {
                     <span className="px-3 py-1 text-xs text-zinc-500 transition-colors">Express Mode</span>
                   </div>
                 </div>
-                
+
                 <div className="p-4 flex-1 space-y-4 overflow-y-auto">
                   <div className="bg-zinc-800/40 border border-zinc-700/50 rounded-lg p-3.5 text-zinc-300 leading-relaxed text-[13px]">
                     Hi, Im Sarah from EcoPack Solutions. We manufacture biodegradable, custom-branded coffee bags that keep beans fresh for 6 months... I want to target boutique, independent coffee roasters based in Seattle and Portland. Please exclude large corporate chains.
@@ -252,7 +255,7 @@ export default function CargoLanding() {
 
               {/* RIGHT PANEL: Terminal + Table */}
               <div className="lg:col-span-8 flex flex-col bg-[#050505]">
-                
+
                 {/* Top: Mission Control Terminal */}
                 <div className="h-[200px] border-b border-zinc-800/50 p-6 font-mono text-xs overflow-hidden relative bg-[#030303]">
                   <div className="flex items-center gap-2 mb-5 text-zinc-100 font-sans text-sm font-semibold tracking-wide">
@@ -274,7 +277,7 @@ export default function CargoLanding() {
                     <CheckCircle className="w-4 h-4 text-zinc-400" />
                     Company List
                   </div>
-                  
+
                   <table className="w-full text-left text-[13px]">
                     <thead className="text-zinc-500 border-b border-zinc-800/50 bg-[#0a0a0b]">
                       <tr>
@@ -306,7 +309,7 @@ export default function CargoLanding() {
                           </button>
                         </td>
                       </tr>
-                      
+
                       {/* Row 2 */}
                       <tr className="hover:bg-zinc-800/30 transition-colors">
                         <td className="py-4 px-6">
@@ -373,8 +376,8 @@ export default function CargoLanding() {
                 </div>
               ))}
             </CardContent>
-            <Button 
-              className="w-full mt-8" 
+            <Button
+              className="w-full mt-8"
               variant="outline"
               onClick={() => handleRouting('free')}
               disabled={loadingTier !== null}
@@ -404,7 +407,7 @@ export default function CargoLanding() {
                 </div>
               ))}
             </CardContent>
-            <Button 
+            <Button
               className="w-full mt-8 bg-primary text-primary-foreground"
               onClick={() => handleRouting('paid')}
               disabled={loadingTier !== null}
@@ -459,7 +462,7 @@ export default function CargoLanding() {
         <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/80 to-transparent pointer-events-none" />
 
         <div className="max-w-[1300px] mx-auto px-6 md:px-12 relative z-10 flex flex-col items-center w-full">
-          
+
           {/* Enterprise Routing Links */}
           {/* <div className="flex flex-wrap justify-center gap-6 md:gap-12 mb-16 text-[11px] tracking-[0.2em] uppercase text-zinc-500 font-semibold">
             <a href="#" className="hover:text-zinc-200 transition-colors">Manifesto</a>
@@ -484,7 +487,7 @@ export default function CargoLanding() {
               <span>Global Network Active</span>
             </div>
           </div>
-          
+
         </div>
       </footer>
     </div>
