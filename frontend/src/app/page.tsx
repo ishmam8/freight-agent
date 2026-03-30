@@ -75,7 +75,7 @@ export default function CargoLanding() {
           <a href="#contact" onClick={(e) => scrollToSection(e, "contact")} className="hover:text-primary transition-colors">Contact</a>
         </div>
         <Link href="/login">
-          <Button variant="outline" className="border-primary text-primary hover:bg-primary hover:text-primary">
+          <Button size="lg" variant="outline" className="border-primary text-primary hover:bg-primary hover:text-primary">
             Sign In
           </Button>
         </Link>
@@ -89,14 +89,14 @@ export default function CargoLanding() {
               Export Your Vision. <br />
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground font-medium tracking-tight max-w-xl leading-relaxed">
-              The AI Sales Agent for cross-border B2B sales. <br /> Automate discovery, enrichment, and hyper-localized outreach at scale.
-              We navigate cultural differences and deliver your pitch directly to your buyers.
+              AI Trade Scout: The autonomous sales engine that finds and closes your overseas buyers while you sleep.
+              <br /> Automate discovery, enrichment, and hyper-localized outreach at scale.
             </p>
             <div className="flex flex-wrap gap-4">
               <Link href="/login">
-                <Button size="lg" className="bg-primary text-primary-foreground font-bold group">
-                  Start Outreaching (Free Trial)
-                  <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                <Button size="xl" className="bg-primary text-primary-foreground text-xl group px-8">
+                  Try the Live Demo — Input Your Target Market
+                  <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
             </div>
@@ -138,7 +138,7 @@ export default function CargoLanding() {
         <section id="pipeline" className="py-24 bg-card/50 px-6">
           <div className="max-w-4xl mx-auto text-center mb-20 space-y-4">
             <h2 className="text-4xl md:text-5xl font-bold tracking-tighter text-zinc-300 bg-clip-text bg-gradient-to-b from-zinc-200 to-zinc-800 pb-2">Your intelligent SDR that handles <br />the grunt work exceptionally.</h2>
-            <p className="text-muted-foreground font-medium tracking-tight">From market discovery to boardroom entry.</p>
+            <p className="text-muted-foreground font-medium tracking-tight">Your AI First Mate for Global B2B Sales.</p>
           </div>
 
           <div className="max-w-2xl mx-auto relative space-y-16">
@@ -378,6 +378,7 @@ export default function CargoLanding() {
             </CardContent>
             <Button
               className="w-full mt-8"
+              size="lg"
               variant="outline"
               onClick={() => handleRouting('free')}
               disabled={loadingTier !== null}
@@ -409,6 +410,7 @@ export default function CargoLanding() {
             </CardContent>
             <Button
               className="w-full mt-8 bg-primary text-primary-foreground"
+              size="lg"
               onClick={() => handleRouting('paid')}
               disabled={loadingTier !== null}
             >
@@ -446,12 +448,13 @@ export default function CargoLanding() {
                   <label htmlFor="message" className="text-sm font-medium text-zinc-300">Message</label>
                   <textarea id="message" name="message" rows={4} className="w-full bg-zinc-900 border border-zinc-800 rounded-md p-3 text-sm text-zinc-100 focus:outline-none focus:ring-1 focus:ring-primary resize-none transition-colors" required></textarea>
                 </div>
-                <Button type="submit" className="w-full bg-primary text-primary-foreground font-bold">
+                <Button type="submit" size="lg" className="w-full bg-primary text-primary-foreground font-bold">
                   Send Message
                 </Button>
               </form>
             </CardContent>
           </Card>
+          <p className="text-muted-foreground text-center font-medium tracking-tight py-2">Built by Ishmam — solo founder shipping in public.</p>
         </section>
       </main>
 
